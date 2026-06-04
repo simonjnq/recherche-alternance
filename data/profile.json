@@ -1,0 +1,57 @@
+{
+  "name": "Simon Jouanique",
+  "email": "",
+  "phone": "",
+  "linkedin": "",
+  "location": "Paris",
+  "contract_types": [
+    "alternance",
+    "apprentissage"
+  ],
+  "tagline": "",
+  "signature_achievements": [],
+  "letter_style": "natural",
+  "forbidden_phrases": [],
+  "keywords": {
+    "ia_automation": [
+      "automatisation IA",
+      "LLM",
+      "agent IA",
+      "n8n",
+      "Zapier",
+      "workflow IA"
+    ],
+    "growth": [
+      "growth engineer",
+      "growth marketing IA",
+      "acquisition IA"
+    ],
+    "tech_builder": [
+      "prompt engineer",
+      "no-code builder",
+      "scraping automatisation",
+      "product builder"
+    ],
+    "data_product": [
+      "product manager IA",
+      "business analyst IA",
+      "product builder"
+    ],
+    "combos": [
+      "IA alternance Paris",
+      "AI engineer alternance",
+      "no-code alternance Paris"
+    ]
+  },
+  "sources_enabled": {
+    "la_bonne_alternance": true,
+    "indeed": true,
+    "wttj": true,
+    "hellowork": true,
+    "apec": true,
+    "linkedin": true,
+    "linkedin_manual": true
+  },
+  "score_threshold_generate": 70,
+  "max_offers_per_source": 60
+}
