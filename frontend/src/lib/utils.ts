@@ -23,27 +23,40 @@ export function formatDate(iso?: string | null): string {
   });
 }
 
+export function relativeDays(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+  if (days <= 0) return "aujourd'hui";
+  if (days === 1) return "hier";
+  if (days < 7) return `il y a ${days} j`;
+  if (days < 30) return `il y a ${Math.floor(days / 7)} sem`;
+  return `il y a ${Math.floor(days / 30)} mois`;
+}
+
 export function scoreColor(score: number): {
   bg: string;
   text: string;
   ring: string;
 } {
+  // Palette DESIGN.md : vert = succès (fort), bleu = info (moyen), slate = neutre.
   if (score >= 80)
     return {
-      bg: "bg-emerald-50",
-      text: "text-emerald-700",
-      ring: "ring-emerald-200",
+      bg: "bg-secondary-container",
+      text: "text-on-secondary-container",
+      ring: "ring-secondary",
     };
   if (score >= 60)
     return {
-      bg: "bg-amber-50",
-      text: "text-amber-700",
-      ring: "ring-amber-200",
+      bg: "bg-tertiary-container",
+      text: "text-on-tertiary-container",
+      ring: "ring-tertiary",
     };
   return {
-    bg: "bg-neutral-100",
-    text: "text-neutral-600",
-    ring: "ring-neutral-200",
+    bg: "bg-surface-highest",
+    text: "text-on-surface-variant",
+    ring: "ring-outline-variant",
   };
 }
 

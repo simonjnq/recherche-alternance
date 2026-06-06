@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Recherche Alternance</title>
+    <script>
+      // Applique le thème avant le rendu pour éviter un flash clair→sombre
+      try { if (localStorage.getItem("theme") === "dark") document.documentElement.classList.add("dark"); } catch (e) {}
+    </script>
   </head>
   <body class="font-sans antialiased">
     <div id="root"></div>

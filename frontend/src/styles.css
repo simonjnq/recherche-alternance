@@ -7,13 +7,118 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Design tokens — "Professional Career Engine" (DESIGN.md)
+   ============================================================ */
 :root {
-  --bg: #fafafa;
-  --surface: #ffffff;
-  --border: #e5e5e5;
-  --text: #171717;
-  --muted: #737373;
-  --accent: #171717;
+  /* Surfaces (élévation tonale, bleutées) */
+  --surface: #f8f9ff;
+  --surface-dim: #cbdbf5;
+  --surface-bright: #f8f9ff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #eff4ff;
+  --surface-container: #e5eeff;
+  --surface-container-high: #dce9ff;
+  --surface-container-highest: #d3e4fe;
+  --background: #f8f9ff;
+
+  /* Texte */
+  --on-surface: #0b1c30;
+  --on-surface-variant: #45464d;
+  --inverse-surface: #213145;
+  --inverse-on-surface: #eaf1ff;
+
+  /* Contours */
+  --outline: #76777d;
+  --outline-variant: #c6c6cd;
+
+  /* Brand — Deep Navy */
+  --navy: #131b2e;
+  --primary: #131b2e;
+  --on-primary: #ffffff;
+  --primary-container: #dae2fd;
+  --on-primary-container: #131b2e;
+
+  /* Success — Green (réservé aux états positifs) */
+  --secondary: #006c49;
+  --on-secondary: #ffffff;
+  --secondary-container: #c5f4dd;
+  --on-secondary-container: #00513a;
+
+  /* Action — Blue (liens & focus) */
+  --tertiary: #3980f4;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #d8e2ff;
+  --on-tertiary-container: #00347a;
+
+  /* Error */
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+
+  /* Translucides (badges 10%) */
+  --success-soft: rgba(0, 108, 73, 0.1);
+  --info-soft: rgba(57, 128, 244, 0.1);
+  --neutral-soft: rgba(69, 70, 77, 0.08);
+  --error-soft: rgba(186, 26, 26, 0.1);
+}
+
+/* ===================== Thème sombre ===================== */
+html.dark {
+  --surface: #111726;
+  --surface-dim: #0c111c;
+  --surface-bright: #283041;
+  --surface-container-lowest: #0c111c;
+  --surface-container-low: #151c2b;
+  --surface-container: #1a2233;
+  --surface-container-high: #222b3d;
+  --surface-container-highest: #2b3548;
+  --background: #0e1320;
+
+  --on-surface: #e7ecf7;
+  --on-surface-variant: #b6c0d0;
+  --inverse-surface: #e7ecf7;     /* snackbar : clair sur fond sombre */
+  --inverse-on-surface: #14213a;
+
+  --outline: #828ca0;
+  --outline-variant: #333d50;
+
+  --navy: #36456a;                /* bg des boutons primaires en sombre */
+  --primary: #aab6d8;
+  --on-primary: #eaf1ff;          /* texte clair sur bouton navy */
+  --primary-container: #2c3855;
+  --on-primary-container: #dae2fd;
+
+  --secondary: #4fdfa6;
+  --on-secondary: #00321f;
+  --secondary-container: #16402f;
+  --on-secondary-container: #9af7cd;
+
+  --tertiary: #7aa9ff;
+  --on-tertiary: #002a5c;
+  --tertiary-container: #1d3360;
+  --on-tertiary-container: #d7e3ff;
+
+  --error: #ffb4ab;
+  --on-error: #690005;
+  --error-container: #8c1d18;
+  --on-error-container: #ffdad6;
+
+  --success-soft: rgba(79, 223, 166, 0.15);
+  --info-soft: rgba(122, 169, 255, 0.15);
+  --neutral-soft: rgba(182, 192, 208, 0.12);
+  --error-soft: rgba(255, 180, 171, 0.16);
+}
+
+/* Ajustements composants en sombre (où un token sert à la fois de fg et bg) */
+html.dark .btn-secondary {
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border-color: var(--outline);
+}
+html.dark .badge-info {
+  color: #9cc0ff;
 }
 
 html,
@@ -23,8 +128,9 @@ body,
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: var(--background);
+  color: var(--on-surface);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -39,15 +145,104 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: #e5e5e5;
-  border-radius: 6px;
+  background: var(--outline-variant);
+  border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #d4d4d4;
+  background: var(--outline);
   background-clip: padding-box;
   border: 2px solid transparent;
+}
+
+/* ============================================================
+   Composants réutilisables (DESIGN.md > Components)
+   ============================================================ */
+@layer components {
+  /* --- Boutons --- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded text-label-md
+           transition-all focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-tertiary disabled:cursor-not-allowed select-none;
+  }
+  .btn-sm {
+    @apply h-8 px-3 text-label-sm;
+  }
+  /* Primaire : navy, texte blanc — poids visuel maximal */
+  .btn-primary {
+    @apply btn bg-navy text-on-primary shadow-soft
+           hover:bg-[#1d2841] active:scale-[0.99]
+           disabled:bg-surface-highest disabled:text-on-surface-variant disabled:shadow-none;
+  }
+  /* Secondaire : blanc, bordure + texte navy */
+  .btn-secondary {
+    @apply btn bg-surface-lowest text-navy border border-navy
+           hover:bg-surface-container-low active:scale-[0.99];
+  }
+  /* Ghost : sans fond — actions secondaires (annuler, effacer) */
+  .btn-ghost {
+    @apply btn bg-transparent text-on-surface-variant
+           hover:bg-surface-c hover:text-on-surface;
+  }
+  /* Succès : vert — soumissions, validations */
+  .btn-success {
+    @apply btn bg-secondary text-on-secondary shadow-soft hover:brightness-110 active:scale-[0.99];
+  }
+
+  /* --- Inputs --- */
+  .input {
+    @apply h-10 px-3 rounded bg-surface-lowest text-body-md text-on-surface
+           border border-outline-variant placeholder:text-on-surface-variant
+           transition-colors focus:outline-none focus:border-tertiary
+           focus:ring-2 focus:ring-tertiary;
+  }
+  .select {
+    @apply input pr-8 cursor-pointer;
+  }
+
+  /* --- Cartes (élévation niveau 1, hover niveau 2) --- */
+  .card {
+    @apply bg-surface-lowest border border-outline-variant rounded-lg;
+  }
+  .card-interactive {
+    @apply card transition-all hover:shadow-level-2 hover:border-outline;
+  }
+
+  /* --- Badges (pill) --- */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-sm whitespace-nowrap;
+  }
+  .badge-success {
+    background: var(--success-soft);
+    @apply text-secondary;
+  }
+  .badge-info {
+    background: var(--info-soft);
+    @apply text-[#1f5fd0];
+  }
+  .badge-neutral {
+    background: var(--neutral-soft);
+    @apply text-on-surface-variant;
+  }
+  .badge-error {
+    background: var(--error-soft);
+    @apply text-on-error-container;
+  }
+
+  /* --- Overline / label de section --- */
+  .section-label {
+    @apply text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold;
+  }
+
+  /* --- Liste à puces "check" vertes (DESIGN.md > Lists) --- */
+  .list-check > li {
+    @apply relative pl-6 text-body-md text-on-surface-variant;
+  }
+  .list-check > li::before {
+    content: "✓";
+    @apply absolute left-0 top-0 text-secondary font-bold;
+  }
 }
 
 /* Line clamp utilitaire (fallback) */
@@ -64,13 +259,12 @@ body {
   overflow: hidden;
 }
 
-/* Prose minimale pour descriptions */
 .prose-sm p {
   margin-bottom: 0.5rem;
   line-height: 1.55;
 }
 
-/* Animation shimmer pour barre progression indéterminée */
+/* Animation shimmer pour barre de progression indéterminée */
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
@@ -83,7 +277,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(23, 23, 23, 0.25) 50%,
+    rgba(57, 128, 244, 0.3) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
