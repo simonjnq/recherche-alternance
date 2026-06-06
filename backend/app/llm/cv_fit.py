@@ -29,14 +29,26 @@ TARGET_FILL_MIN = 1090      # ≤ 3% de vide en bas (~33px)
 MAX_ITER = 9
 
 
-async def fit_cv_html(html: str) -> str:
+async def fit_cv_html(html: str, base_density: float | None = None) -> str:
     """Trouve la meilleure densité par colonne et injecte les variables.
 
-    Critère : chaque colonne doit tenir ≤ PAGE_H_PX et remplir ≥ TARGET_FILL_MIN.
-    Si une colonne n'arrive pas à remplir même à MAX_DENSITY, on garde MAX_DENSITY.
+    Deux modes :
+    - `base_density is None` (pipeline / CV généré) : auto-fit libre — on vise un
+      remplissage ∈ [TARGET_FILL_MIN, PAGE_H_PX], densité de référence 1.0.
+    - `base_density` fourni (densité choisie dans l'éditeur) : on l'ANCRE — on la
+      garde telle quelle, et on ne compresse QUE si la colonne déborde la page.
+      On n'écrase jamais le choix de l'utilisateur pour "remplir" du vide.
     """
-    sidebar_d = 1.0
-    main_d = 1.0
+    anchored = base_density is not None
+    base = 1.0
+    if anchored:
+        try:
+            base = max(MIN_DENSITY, min(MAX_DENSITY, float(base_density)))
+        except (TypeError, ValueError):
+            base, anchored = 1.0, False
+
+    sidebar_d = base
+    main_d = base
     try:
         async with _lock:
             browser = await _get_browser()
@@ -90,26 +102,30 @@ async def fit_cv_html(html: str) -> str:
                     )
                     return int(res[0]), int(res[1])
 
-                # Premier essai : densités 1.0
-                sb, mn = await measure(1.0, 1.0)
-                logger.info("CV fit init (sd=1.0, md=1.0): sidebar=%d main=%d", sb, mn)
+                # Premier essai : à la densité d'ancrage (base)
+                sb, mn = await measure(base, base)
+                logger.info("CV fit init (base=%.3f): sidebar=%d main=%d", base, sb, mn)
 
                 # Indépendance par colonne : on cherche la meilleure densité pour chaque
                 sidebar_d = await _fit_column(
-                    measure_h=lambda d: _measure_sidebar(measure, d, main_d_fixed=1.0),
+                    measure_h=lambda d: _measure_sidebar(measure, d, main_d_fixed=base),
                     current_h=sb,
+                    base=base,
+                    anchored=anchored,
                 )
                 main_d = await _fit_column(
                     measure_h=lambda d: _measure_main(measure, d, sidebar_d_fixed=sidebar_d),
                     current_h=mn,
+                    base=base,
+                    anchored=anchored,
                 )
-                logger.info("CV fit final: sd=%.3f md=%.3f", sidebar_d, main_d)
+                logger.info("CV fit final: sd=%.3f md=%.3f (anchored=%s)", sidebar_d, main_d, anchored)
             finally:
                 await ctx.close()
     except Exception as e:
-        logger.warning("CV auto-fit a échoué (%s) — densités par défaut 1.0/1.0", e)
-        sidebar_d = 1.0
-        main_d = 1.0
+        logger.warning("CV auto-fit a échoué (%s) — densité d'ancrage %.3f", e, base)
+        sidebar_d = base
+        main_d = base
 
     return _inject_densities(html, sidebar_d, main_d)
 
@@ -127,8 +143,19 @@ async def _measure_main(measure, md: float, sidebar_d_fixed: float) -> int:
     return mn
 
 
-async def _fit_column(measure_h, current_h: int) -> float:
-    """Binary-search une densité de colonne pour remplir [TARGET_FILL_MIN, PAGE_H_PX]."""
+async def _fit_column(measure_h, current_h: int, base: float = 1.0, anchored: bool = False) -> float:
+    """Densité d'une colonne.
+
+    - mode ancré (densité choisie par l'utilisateur) : on garde `base`, on ne
+      compresse (entre MIN_DENSITY et base) QUE si la colonne déborde la page.
+      On n'étire jamais pour combler du vide — l'aéré est un choix assumé.
+    - mode libre (auto) : on vise [TARGET_FILL_MIN, PAGE_H_PX] autour de 1.0.
+    """
+    if anchored:
+        if current_h > PAGE_H_PX:
+            return await _binary_search(measure_h, MIN_DENSITY, base)
+        return base
+
     # Cas A : déjà à pile la bonne hauteur
     if TARGET_FILL_MIN <= current_h <= PAGE_H_PX:
         return 1.0

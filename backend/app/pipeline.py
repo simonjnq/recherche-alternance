@@ -179,10 +179,15 @@ async def _run_search_inner() -> None:
                     {s: p.count for s, p in per_source.items()})
         await emit_state(f"Scraping terminé : {len(raw_offers)} offres brutes")
 
-        # --- 2. Nettoyage + filtres (alternance + pertinence) + dedup + insert ---
+        # --- 2. Nettoyage + filtres (alternance + pertinence + entreprises bloquées) + dedup + insert ---
         new_offer_ids: list[int] = []
         dropped_non_alt = 0
         dropped_irrelevant = 0
+        dropped_blocked = 0
+        # Entreprises à bannir (écoles/CFA qui repostent des offres génériques : ISCOD…)
+        blocked = [c.strip().lower() for c in profile.get("blocked_companies", []) if c.strip()]
+        rel_strong = [s for s in profile.get("relevance_strong", []) if s.strip()]
+        rel_excluded = [s for s in profile.get("relevance_excluded", []) if s.strip()]
         for raw in raw_offers:
             raw.title = clean_offer_title(raw.title)
             raw.description = clean_description(raw.description, raw.source)
@@ -191,15 +196,18 @@ async def _run_search_inner() -> None:
             if not is_alternance(raw):
                 dropped_non_alt += 1
                 continue
-            if not is_relevant(raw, keywords):
+            if not is_relevant(raw, keywords, extra_strong=rel_strong, excluded=rel_excluded):
                 dropped_irrelevant += 1
+                continue
+            if blocked and raw.company and any(b in raw.company.lower() for b in blocked):
+                dropped_blocked += 1
                 continue
             oid = await dbm.upsert_offer_raw(db, raw, run_id)
             if oid is not None:
                 new_offer_ids.append(oid)
         logger.info(
-            "New offers: %d / %d scraped (%d non-alternance, %d hors-domaine écartées)",
-            len(new_offer_ids), len(raw_offers), dropped_non_alt, dropped_irrelevant,
+            "New offers: %d / %d scraped (%d non-alternance, %d hors-domaine, %d entreprises bloquées)",
+            len(new_offer_ids), len(raw_offers), dropped_non_alt, dropped_irrelevant, dropped_blocked,
         )
 
         # --- 3. Scoring ---
@@ -211,11 +219,18 @@ async def _run_search_inner() -> None:
 
         async def score_one(i: int, oid: int) -> None:
             async with sem:
-                offer = await dbm.get_offer(db, oid)
-                if not offer:
-                    return
-                scored = await score_offer(offer, profile)
-                await dbm.set_offer_scoring(db, oid, scored)
+                # Connexion DÉDIÉE par worker : ne jamais partager une connexion
+                # aiosqlite entre coroutines concurrentes (entrelacement execute/fetch
+                # → corruption mémoire → SIGSEGV sqlite).
+                sdb = await dbm.connect()
+                try:
+                    offer = await dbm.get_offer(sdb, oid)
+                    if not offer:
+                        return
+                    scored = await score_offer(offer, profile)
+                    await dbm.set_offer_scoring(sdb, oid, scored)
+                finally:
+                    await sdb.close()
                 offer.skills = scored.skills
                 offer.score = scored.score
                 offer.reasoning = scored.reasoning
@@ -231,6 +246,26 @@ async def _run_search_inner() -> None:
 
         # --- 4. Génération CV + lettre pour offres score >= threshold ---
         eligible = [o for o in scored_offers if o.score >= threshold]
+
+        # Par défaut on NE génère PAS automatiquement : la génération (≈95% du coût
+        # LLM) se fait à la demande depuis le détail d'une offre. Activable via le
+        # flag profil `auto_generate`.
+        if not bool(profile.get("auto_generate", False)):
+            filt = dropped_non_alt + dropped_irrelevant
+            filt_msg = f", {filt} écartées (hors alternance/domaine)" if filt else ""
+            await STATE.emit(SearchRunProgress(
+                stage="done",
+                message=(f"Terminé — {len(scored_offers)} nouvelles offres, "
+                         f"{len(eligible)} ≥{threshold} prêtes{filt_msg}. "
+                         f"Génère CV+lettre à la demande depuis une offre."),
+            ))
+            await _finish_run(db, run_id, {
+                "scraped": len(raw_offers), "new": len(new_offer_ids),
+                "dropped_non_alt": dropped_non_alt, "dropped_irrelevant": dropped_irrelevant,
+                "scored": len(scored_offers), "eligible": len(eligible), "generated": 0,
+            })
+            return
+
         skipped: list[tuple[Offer, str]] = []
         top: list[Offer] = []
         for o in eligible:
@@ -281,10 +316,15 @@ async def _run_search_inner() -> None:
                     cv_path.write_text(cv_html)
                     letter_path = folder / "letter.md"
                     letter_path.write_text(letter_md)
-                    await dbm.add_generated(db, GeneratedDocs(
-                        offer_id=offer.id or 0, cv_id=default_cv.id or 0,
-                        adapted_cv_path=str(cv_path), letter_path=str(letter_path),
-                    ))
+                    # Connexion dédiée (workers concurrents) — voir score_one.
+                    gdb = await dbm.connect()
+                    try:
+                        await dbm.add_generated(gdb, GeneratedDocs(
+                            offer_id=offer.id or 0, cv_id=default_cv.id or 0,
+                            adapted_cv_path=str(cv_path), letter_path=str(letter_path),
+                        ))
+                    finally:
+                        await gdb.close()
                     await STATE.emit(SearchRunProgress(
                         stage="generating", current=i, total=len(top),
                         message=f"Généré : {offer.title[:50]}", offer_id=offer.id,

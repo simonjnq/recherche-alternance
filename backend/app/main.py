@@ -4,10 +4,12 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+import anthropic
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from tenacity import RetryError
 
 from .config import FRONTEND_DIST, HOST, PORT
 from .db import init_db
@@ -17,6 +19,40 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _llm_error_response(exc: BaseException) -> JSONResponse | None:
+    """Traduit une erreur Anthropic (éventuellement enveloppée par tenacity) en
+    réponse HTTP claire. Retourne None si ce n'est pas une erreur LLM connue."""
+    inner: BaseException = exc
+    if isinstance(exc, RetryError) and exc.last_attempt is not None:
+        try:
+            inner = exc.last_attempt.exception() or exc
+        except Exception:
+            inner = exc
+    if not isinstance(inner, anthropic.APIError):
+        return None
+    msg = str(inner)
+    low = msg.lower()
+    if "credit balance" in low or "billing" in low or "insufficient" in low:
+        return JSONResponse(
+            status_code=402,
+            content={"detail": "Crédit Anthropic insuffisant. Ajoute des crédits sur "
+                               "console.anthropic.com → Plans & Billing, puis réessaie."},
+        )
+    if isinstance(inner, anthropic.RateLimitError) or "rate limit" in low:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Limite de débit Anthropic atteinte. Réessaie dans un moment."},
+        )
+    if isinstance(inner, anthropic.AuthenticationError) or "api key" in low or "x-api-key" in low:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Clé API Anthropic invalide ou manquante (ANTHROPIC_API_KEY)."},
+        )
+    return JSONResponse(status_code=502, content={"detail": f"Erreur API Anthropic : {msg[:300]}"})
 
 
 @asynccontextmanager
@@ -34,6 +70,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(RetryError)
+async def _retry_error_handler(request: Request, exc: RetryError):
+    resp = _llm_error_response(exc)
+    if resp is not None:
+        return resp
+    logger.exception("RetryError non géré: %s", exc)
+    return JSONResponse(status_code=500, content={"detail": f"Erreur interne : {str(exc)[:300]}"})
+
+
+@app.exception_handler(anthropic.APIError)
+async def _anthropic_error_handler(request: Request, exc: anthropic.APIError):
+    resp = _llm_error_response(exc)
+    if resp is not None:
+        return resp
+    return JSONResponse(status_code=502, content={"detail": f"Erreur API Anthropic : {str(exc)[:300]}"})
+
 
 app.include_router(offers.router)
 app.include_router(offers.templates_router)

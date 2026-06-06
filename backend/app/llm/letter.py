@@ -24,6 +24,14 @@ DEFAULT_FORBIDDEN_PHRASES = [
     "exactement l'environnement",
     "non pas parce qu'",
     "force de proposition",  # surutilisé
+    "votre entreprise",      # trop vague — nommer ou décrire concrètement
+    "dynamique et motivé",
+    "à la recherche d'un nouveau défi",
+    "en pleine croissance",
+    "fortement intéressé par",
+    "depuis mon plus jeune âge",
+    "votre renommée",
+    "rejoindre vos équipes",
 ]
 
 STYLE_GUIDANCE = {
@@ -131,22 +139,25 @@ Structure attendue (Markdown) :
 À l'attention de [destinataire fourni dans le brief]
 Objet : Candidature — [Titre du poste exact] en alternance
 
-[Para 1] Accroche : pourquoi CETTE entreprise et CE poste précisément. T'appuie sur un élément CONCRET de l'offre (mission, produit, secteur, mot exact). Si l'entreprise est inconnue, ouvre sur la mission du poste lui-même.
+[Para 1] Accroche — PREMIÈRE PHRASE percutante, sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" sont INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'offre (une mission citée, le produit, le secteur, une techno nommée) en réutilisant le vocabulaire exact de l'annonce. Montre que tu as lu CETTE offre, pas une autre. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
 
-[Para 2] Fit : ce que le candidat apporte, aligné avec 2 ou 3 compétences clés de l'offre. UNE preuve concrète par compétence (projet nommé, outil maîtrisé, résultat). Pas d'énumération exhaustive : 2-3 preuves, pas 8.
+[Para 2] Preuve du fit : aligne 2-3 compétences clés de l'offre avec UNE preuve concrète et CHIFFRÉE chacune (projet nommé + résultat mesurable, outil maîtrisé + usage réel). "J'ai fait X qui a donné Y" plutôt que "je maîtrise X". Mire le vocabulaire/stack de l'offre. 2-3 preuves fortes, jamais une liste de 8.
 
-[Para 3] Projection : ce que le candidat veut développer chez eux. Une phrase de call-to-action courte et concrète (pas une formule générique).
+[Para 3] Projection + CTA : ce que le candidat veut concrètement apprendre/construire à ce poste (relié à une mission de l'offre), puis une phrase de clôture courte et naturelle proposant un échange. Pas de formule toute faite.
 
 Cordialement,
 [Nom du candidat]
 
 RÈGLES IMPÉRATIVES
-- ~280 mots TOTAL. Compte serré, pas 350.
+- ~280 mots TOTAL (3 paragraphes). Compte serré, jamais plus de 320.
+- Une seule IDÉE par paragraphe. Phrases courtes. Voix active.
+- CONCRET > générique : chaque phrase doit pouvoir être fausse pour un autre candidat ou une autre boîte. Si une phrase marcherait pour n'importe qui, supprime-la.
+- Réutilise les mots-clés/missions exacts de l'offre (effet miroir), sans copier-coller de paragraphes entiers.
 - Jamais de "Madame, Monsieur" (la formule d'appel est déjà dans "À l'attention de").
-- Jamais de placeholder entre crochets dans le rendu final : si une info manque (entreprise inconnue, email/téléphone absent), OMETS la ligne ou utilise une formulation neutre. Aucune mention "[entreprise]", "[Startup IA]", "[à compléter]".
-- N'invente JAMAIS de fait absent du CV ou de l'offre.
+- Jamais de placeholder entre crochets dans le rendu final : si une info manque (entreprise inconnue, email/téléphone absent), OMETS la ligne ou reformule neutre. Aucune mention "[entreprise]", "[Startup IA]", "[à compléter]".
+- N'invente JAMAIS de fait, chiffre, outil ou expérience absent du CV/profil ou de l'offre. Pas de chiffre inventé : n'utilise que ceux présents dans le profil.
 - Pas d'emojis, pas de listes à puces dans les paragraphes.
-- Le titre dans l'objet doit reprendre exactement le titre de l'offre (nettoyé du nom de l'entreprise et des suffixes H/F si présents).
+- Le titre dans l'objet reprend exactement le titre de l'offre (nettoyé du nom d'entreprise et des suffixes H/F).
 
 {style_block}{forbidden_block}
 
@@ -255,11 +266,12 @@ Rédige la lettre selon la structure et le ton imposés."""
 POLISH_SYSTEM = """Tu es un relecteur senior. On te donne une lettre de motivation en markdown. Ta tâche :
 
 1. Supprimer les phrases creuses, les formules rebattues et les tournures interdites listées.
-2. Raccourcir : viser ~280 mots dans le corps (hors en-tête/objet/signature).
-3. Garder UNE accroche concrète au para 1, 2-3 preuves max au para 2, 1 phrase de projection + CTA court au para 3.
-4. Ne PAS changer les faits, les noms, les dates, l'objet, la structure d'en-tête/signature.
-5. Ne JAMAIS introduire de placeholder entre crochets.
-6. Garde la même langue (français) et le même registre.
+2. Test du "n'importe qui" : toute phrase qui marcherait pour un autre candidat OU une autre entreprise → réécris-la pour la rendre spécifique, ou supprime-la.
+3. La 1ʳᵉ phrase doit accrocher sur un élément concret de l'offre, sans formule d'intro ("Je me permets", "Actuellement étudiant" interdits en ouverture).
+4. Privilégier les preuves chiffrées et le vocabulaire de l'offre ; supprimer les adjectifs vides (dynamique, motivé, rigoureux…).
+5. Raccourcir : ~280 mots dans le corps (hors en-tête/objet/signature). Une idée par paragraphe, voix active.
+6. Ne PAS changer les faits, noms, dates, chiffres, l'objet, ni la structure en-tête/signature. Ne JAMAIS inventer.
+7. Ne JAMAIS introduire de placeholder entre crochets. Garde le français et le registre.
 
 Renvoie UNIQUEMENT la lettre relue en markdown — sans introduction, sans commentaire, sans ```."""
 
