@@ -92,16 +92,73 @@ async def list_offers(
     source: Optional[str] = None,
     search: Optional[str] = None,
     new_only: bool = False,
+    sort: str = "score",
+    generated: Optional[bool] = None,
+    contract: Optional[str] = None,
+    location: Optional[str] = None,
+    days_max: Optional[int] = None,
     limit: int = Query(500, le=2000),
 ) -> list[dict]:
     db = await dbm.connect()
     try:
         offers = await dbm.list_offers(
-            db, min_score, favorites_only, source, search, new_only, limit
+            db, min_score, favorites_only, source, search, new_only,
+            sort=sort, generated=generated, contract=contract,
+            location=location, days_max=days_max, limit=limit,
         )
         return [o.model_dump(mode="json") for o in offers]
     finally:
         await db.close()
+
+
+@router.post("/cleanup")
+async def cleanup(mode: str = "old", days: int = 30) -> dict:
+    """Masque en masse les offres anciennes ('old') ou non scorées ('unscored')."""
+    db = await dbm.connect()
+    try:
+        n = await dbm.cleanup_offers(db, mode=mode, days=days)
+        return {"ok": True, "hidden": n}
+    finally:
+        await db.close()
+
+
+_STATUS_LABELS = {
+    "to_apply": "À postuler", "applied": "Postulé", "interview": "Entretien",
+    "accepted": "Retenu", "rejected": "Non retenu",
+}
+
+
+@router.get("/export.csv")
+async def export_csv(favorites_only: bool = True) -> Response:
+    """Exporte les offres (favoris par défaut) en CSV pour suivi hors-ligne."""
+    import csv
+    import io
+
+    db = await dbm.connect()
+    try:
+        offers = await dbm.list_offers(db, favorites_only=favorites_only, limit=2000)
+    finally:
+        await db.close()
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow([
+        "Titre", "Entreprise", "Lieu", "Source", "Score", "Étape",
+        "Postulé le", "Relance prévue", "Contact", "Notes", "URL",
+    ])
+    for o in offers:
+        w.writerow([
+            o.title, o.company or "", o.location or "", o.source, o.score,
+            _STATUS_LABELS.get(o.application_status or "to_apply", ""),
+            o.applied_at or "", o.follow_up_at or "", o.contact or "",
+            (o.notes or "").replace("\n", " "), o.url,
+        ])
+    csv_bytes = ("﻿" + buf.getvalue()).encode("utf-8")  # BOM → Excel ouvre l'UTF-8
+    return Response(
+        csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="candidatures.csv"'},
+    )
 
 
 @router.get("/{offer_id}")
@@ -111,6 +168,8 @@ async def get_offer(offer_id: int) -> dict:
         offer = await dbm.get_offer(db, offer_id)
         if not offer:
             raise HTTPException(404, "Offre introuvable")
+        if not offer.seen:
+            await dbm.mark_seen(db, offer_id)  # ouvrir le détail = marquer vu
         docs = await dbm.get_docs_for_offer(db, offer_id)
         return {
             "offer": offer.model_dump(mode="json"),
@@ -135,6 +194,54 @@ async def hide_offer(offer_id: int) -> dict:
     db = await dbm.connect()
     try:
         await dbm.hide_offer(db, offer_id)
+        return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.post("/reorder")
+async def reorder(payload: dict = Body(...)) -> dict:
+    """Réordonne une colonne du board : payload {ordered_ids:[...]}."""
+    ids = payload.get("ordered_ids") or []
+    if not isinstance(ids, list):
+        raise HTTPException(400, "ordered_ids doit être une liste")
+    db = await dbm.connect()
+    try:
+        await dbm.reorder_offers(db, [int(i) for i in ids])
+        return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.post("/{offer_id}/unhide")
+async def unhide_offer(offer_id: int) -> dict:
+    db = await dbm.connect()
+    try:
+        await dbm.unhide_offer(db, offer_id)
+        return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.post("/{offer_id}/tracking")
+async def set_tracking(offer_id: int, payload: dict = Body(...)) -> dict:
+    """Met à jour le suivi : applied_at, follow_up_at, notes, contact (champs partiels)."""
+    db = await dbm.connect()
+    try:
+        await dbm.set_tracking(db, offer_id, payload)
+        return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.post("/{offer_id}/status")
+async def set_status(offer_id: int, value: Optional[str] = None) -> dict:
+    """Met à jour l'étape de suivi de candidature (board des favoris)."""
+    if value is not None and value not in dbm.APPLICATION_STATUSES:
+        raise HTTPException(400, f"Statut invalide. Valeurs: {', '.join(dbm.APPLICATION_STATUSES)}")
+    db = await dbm.connect()
+    try:
+        await dbm.set_application_status(db, offer_id, value)
         return {"ok": True}
     finally:
         await db.close()
@@ -310,12 +417,14 @@ async def put_editable(offer_id: int, payload: dict = Body(...)) -> dict:
     if not cv_path.exists():
         raise HTTPException(404, "CV non généré")
 
+    # WYSIWYG : on persiste EXACTEMENT le rendu affiché dans l'aperçu de l'éditeur
+    # (render_cv applique la densité choisie). Pas d'auto-fit ici — sinon le PDF
+    # diffère de l'aperçu. L'utilisateur règle la densité à la main et la voit.
     html = render_cv(structured, style)
-    fitted = await fit_cv_html(html)
-    cv_path.write_text(fitted)
+    cv_path.write_text(html)
     _write_json(_structured_path(cv_path), structured)
     _write_json(_style_path(cv_path), style)
-    return {"ok": True, "html": fitted}
+    return {"ok": True, "html": html}
 
 
 @router.post("/{offer_id}/cv/render-preview")

@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS offers (
     is_favorite INTEGER DEFAULT 0,
     is_hidden INTEGER DEFAULT 0,
     first_run_id INTEGER,
+    application_status TEXT,
+    applied_at TEXT,
+    follow_up_at TEXT,
+    notes TEXT,
+    contact TEXT,
+    checklist_json TEXT,
+    board_order REAL,
+    seen INTEGER DEFAULT 0,
     scraped_at TEXT,
     scored_at TEXT
 );
@@ -73,6 +81,14 @@ MIGRATIONS = [
     # (table, column, ddl)
     ("cvs", "structured_json", "ALTER TABLE cvs ADD COLUMN structured_json TEXT"),
     ("offers", "first_run_id", "ALTER TABLE offers ADD COLUMN first_run_id INTEGER"),
+    ("offers", "application_status", "ALTER TABLE offers ADD COLUMN application_status TEXT"),
+    ("offers", "applied_at", "ALTER TABLE offers ADD COLUMN applied_at TEXT"),
+    ("offers", "follow_up_at", "ALTER TABLE offers ADD COLUMN follow_up_at TEXT"),
+    ("offers", "notes", "ALTER TABLE offers ADD COLUMN notes TEXT"),
+    ("offers", "contact", "ALTER TABLE offers ADD COLUMN contact TEXT"),
+    ("offers", "seen", "ALTER TABLE offers ADD COLUMN seen INTEGER DEFAULT 0"),
+    ("offers", "checklist_json", "ALTER TABLE offers ADD COLUMN checklist_json TEXT"),
+    ("offers", "board_order", "ALTER TABLE offers ADD COLUMN board_order REAL"),
 ]
 
 
@@ -98,6 +114,11 @@ async def init_db() -> None:
 async def connect() -> aiosqlite.Connection:
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
+    # WAL + busy_timeout : plusieurs connexions (pipeline + requêtes UI) peuvent
+    # lire/écrire en concurrence sans se bloquer ni corrompre (sinon SIGSEGV sqlite).
+    await db.execute("PRAGMA journal_mode=WAL")
+    await db.execute("PRAGMA busy_timeout=10000")
+    await db.execute("PRAGMA synchronous=NORMAL")
     return db
 
 
@@ -153,6 +174,11 @@ async def list_offers(
     source: Optional[str] = None,
     search: Optional[str] = None,
     new_only: bool = False,
+    sort: str = "score",
+    generated: Optional[bool] = None,
+    contract: Optional[str] = None,
+    location: Optional[str] = None,
+    days_max: Optional[int] = None,
     limit: int = 500,
 ) -> list[Offer]:
     latest = await latest_run_id(db)
@@ -166,11 +192,39 @@ async def list_offers(
     if new_only and latest is not None:
         where.append("first_run_id = ?")
         params.append(latest)
+    if contract:
+        where.append("LOWER(COALESCE(contract,'')) LIKE ?")
+        params.append(f"%{contract.lower()}%")
+    if location:
+        where.append("LOWER(COALESCE(location,'')) LIKE ?")
+        params.append(f"%{location.lower()}%")
+    if days_max:
+        from datetime import datetime as _dt, timedelta as _td
+        threshold = (_dt.utcnow() - _td(days=days_max)).isoformat()
+        where.append("COALESCE(posted_at, scraped_at) >= ?")
+        params.append(threshold)
+    if generated is True:
+        where.append("EXISTS (SELECT 1 FROM generated_docs g WHERE g.offer_id = offers.id)")
+    elif generated is False:
+        where.append("NOT EXISTS (SELECT 1 FROM generated_docs g WHERE g.offer_id = offers.id)")
     if search:
-        where.append("(title LIKE ? OR company LIKE ? OR description LIKE ?)")
+        where.append(
+            "(title LIKE ? OR company LIKE ? OR description LIKE ? OR skills_json LIKE ?)"
+        )
         like = f"%{search}%"
-        params.extend([like, like, like])
-    sql = f"SELECT * FROM offers WHERE {' AND '.join(where)} ORDER BY score DESC, scraped_at DESC LIMIT ?"
+        params.extend([like, like, like, like])
+    # Tri : pertinence (score), fraîcheur (date), ou entreprise (A→Z)
+    if sort == "recent":
+        order = "ORDER BY COALESCE(posted_at, scraped_at) DESC, score DESC"
+    elif sort == "company":
+        order = "ORDER BY LOWER(COALESCE(company, 'zzz')) ASC, score DESC"
+    else:
+        order = "ORDER BY score DESC, scraped_at DESC"
+    sql = (
+        "SELECT offers.*, "
+        "EXISTS (SELECT 1 FROM generated_docs g WHERE g.offer_id = offers.id) AS has_docs "
+        f"FROM offers WHERE {' AND '.join(where)} {order} LIMIT ?"
+    )
     params.append(limit)
     cur = await db.execute(sql, params)
     rows = await cur.fetchall()
@@ -191,6 +245,122 @@ async def set_favorite(db: aiosqlite.Connection, offer_id: int, value: bool) -> 
 
 async def hide_offer(db: aiosqlite.Connection, offer_id: int) -> None:
     await db.execute("UPDATE offers SET is_hidden=1 WHERE id=?", (offer_id,))
+    await db.commit()
+
+
+async def unhide_offer(db: aiosqlite.Connection, offer_id: int) -> None:
+    await db.execute("UPDATE offers SET is_hidden=0 WHERE id=?", (offer_id,))
+    await db.commit()
+
+
+async def mark_seen(db: aiosqlite.Connection, offer_id: int) -> None:
+    await db.execute("UPDATE offers SET seen=1 WHERE id=?", (offer_id,))
+    await db.commit()
+
+
+_BACKUP_TABLES = ("offers", "cvs", "generated_docs", "search_runs")
+
+
+async def export_all(db: aiosqlite.Connection) -> dict[str, Any]:
+    """Dump complet des tables (pour sauvegarde JSON)."""
+    out: dict[str, Any] = {}
+    for table in _BACKUP_TABLES:
+        cur = await db.execute(f"SELECT * FROM {table}")
+        rows = await cur.fetchall()
+        out[table] = [dict(r) for r in rows]
+    return out
+
+
+async def import_all(db: aiosqlite.Connection, data: dict[str, Any]) -> dict[str, int]:
+    """Restaure les tables depuis un dump (REMPLACE le contenu existant)."""
+    counts: dict[str, int] = {}
+    for table in _BACKUP_TABLES:
+        rows = data.get(table) or []
+        if not isinstance(rows, list) or not rows:
+            continue
+        await db.execute(f"DELETE FROM {table}")
+        cols = [c for c in rows[0].keys()]
+        placeholders = ",".join("?" * len(cols))
+        await db.executemany(
+            f"INSERT INTO {table} ({','.join(cols)}) VALUES ({placeholders})",
+            [[r.get(c) for c in cols] for r in rows],
+        )
+        counts[table] = len(rows)
+    await db.commit()
+    return counts
+
+
+async def reorder_offers(db: aiosqlite.Connection, ordered_ids: list[int]) -> None:
+    """Affecte board_order = position pour chaque id (réordonnancement d'une colonne)."""
+    for i, oid in enumerate(ordered_ids):
+        await db.execute("UPDATE offers SET board_order=? WHERE id=?", (float(i), oid))
+    await db.commit()
+
+
+async def cleanup_offers(
+    db: aiosqlite.Connection, mode: str = "old", days: int = 30
+) -> int:
+    """Masque en masse. mode='old' : offres > N jours ; mode='unscored' : score 0
+    jamais scoré. Ne touche jamais aux favoris. Retourne le nombre masqué."""
+    if mode == "unscored":
+        cond = "score = 0 AND scored_at IS NULL"
+        args: tuple = ()
+    else:
+        from datetime import datetime as _dt, timedelta as _td
+        threshold = (_dt.utcnow() - _td(days=days)).isoformat()
+        cond = "COALESCE(posted_at, scraped_at) < ?"
+        args = (threshold,)
+    cur = await db.execute(
+        f"SELECT COUNT(*) FROM offers WHERE is_hidden=0 AND is_favorite=0 AND ({cond})", args
+    )
+    n = (await cur.fetchone())[0]
+    await db.execute(
+        f"UPDATE offers SET is_hidden=1 WHERE is_favorite=0 AND ({cond})", args
+    )
+    await db.commit()
+    return n
+
+
+# Étapes de suivi de candidature (None / absent = "à postuler").
+APPLICATION_STATUSES = ("to_apply", "applied", "interview", "accepted", "rejected")
+
+
+async def set_application_status(
+    db: aiosqlite.Connection, offer_id: int, status: Optional[str]
+) -> None:
+    """Met à jour l'étape de candidature. Passe l'offre en favori (on ne suit que
+    des favoris) et renseigne automatiquement applied_at au passage en 'applied'."""
+    if status == "applied":
+        await db.execute(
+            "UPDATE offers SET application_status=?, is_favorite=1, "
+            "applied_at=COALESCE(applied_at, ?) WHERE id=?",
+            (status, datetime.utcnow().date().isoformat(), offer_id),
+        )
+    else:
+        await db.execute(
+            "UPDATE offers SET application_status=?, is_favorite=1 WHERE id=?",
+            (status, offer_id),
+        )
+    await db.commit()
+
+
+_TRACKING_FIELDS = {"applied_at", "follow_up_at", "notes", "contact"}
+
+
+async def set_tracking(
+    db: aiosqlite.Connection, offer_id: int, fields: dict[str, Any]
+) -> None:
+    """Met à jour les champs de suivi (dates, notes, contact, checklist)."""
+    cols = {k: (v if v != "" else None) for k, v in fields.items() if k in _TRACKING_FIELDS}
+    if isinstance(fields.get("checklist"), dict):
+        cols["checklist_json"] = json.dumps(fields["checklist"], ensure_ascii=False)
+    if not cols:
+        return
+    set_clause = ", ".join(f"{k}=?" for k in cols)
+    await db.execute(
+        f"UPDATE offers SET {set_clause}, is_favorite=1 WHERE id=?",
+        (*cols.values(), offer_id),
+    )
     await db.commit()
 
 
@@ -286,6 +456,8 @@ async def get_docs_for_offer(db: aiosqlite.Connection, offer_id: int) -> Optiona
 
 def _row_to_offer(row: aiosqlite.Row, latest_run: Optional[int] = None) -> Offer:
     first_run = row["first_run_id"]
+    keys = row.keys()
+    has_docs = bool(row["has_docs"]) if "has_docs" in keys else False
     return Offer(
         id=row["id"],
         dedup_key_=row["dedup_key"],
@@ -305,6 +477,15 @@ def _row_to_offer(row: aiosqlite.Row, latest_run: Optional[int] = None) -> Offer
         red_flags=json.loads(row["red_flags_json"]) if row["red_flags_json"] else [],
         is_favorite=bool(row["is_favorite"]),
         is_hidden=bool(row["is_hidden"]),
+        application_status=row["application_status"],
+        applied_at=row["applied_at"],
+        follow_up_at=row["follow_up_at"],
+        notes=row["notes"],
+        contact=row["contact"],
+        checklist=(json.loads(row["checklist_json"]) if "checklist_json" in keys and row["checklist_json"] else None),
+        board_order=(row["board_order"] if "board_order" in keys else None),
+        seen=bool(row["seen"]) if "seen" in keys else False,
+        has_docs=has_docs,
         first_run_id=first_run,
         is_new=(latest_run is not None and first_run == latest_run),
         scraped_at=datetime.fromisoformat(row["scraped_at"]) if row["scraped_at"] else None,

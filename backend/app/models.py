@@ -49,6 +49,15 @@ class Offer(OfferRaw, OfferScored):
     dedup_key_: str = ""
     is_favorite: bool = False
     is_hidden: bool = False
+    application_status: Optional[str] = None  # suivi candidature (None = à postuler)
+    applied_at: Optional[str] = None     # date de candidature
+    follow_up_at: Optional[str] = None   # relance prévue
+    notes: Optional[str] = None          # notes libres
+    contact: Optional[str] = None        # contact recruteur
+    checklist: Optional[dict] = None     # étapes cochées {step: bool}
+    board_order: Optional[float] = None  # ordre manuel dans la colonne du board
+    seen: bool = False                   # offre déjà consultée
+    has_docs: bool = False               # CV+lettre déjà générés
     first_run_id: Optional[int] = None  # run qui a découvert l'offre
     is_new: bool = False                # vraie si découverte au dernier run
     scraped_at: Optional[datetime] = None

@@ -72,6 +72,18 @@ async def search_stats() -> dict:
             row = await cur.fetchone()
             new_count = (row["n"] if row else 0) or 0
 
+        # Relances en retard (favoris dont follow_up_at est passé, hors retenus/refusés)
+        from datetime import date as _date
+        today = _date.today().isoformat()
+        cur = await db.execute(
+            "SELECT COUNT(*) AS n FROM offers WHERE is_hidden=0 AND is_favorite=1 "
+            "AND follow_up_at IS NOT NULL AND follow_up_at <= ? "
+            "AND COALESCE(application_status,'') NOT IN ('accepted','rejected')",
+            (today,),
+        )
+        row = await cur.fetchone()
+        overdue_count = (row["n"] if row else 0) or 0
+
         cur = await db.execute(
             "SELECT started_at, finished_at, stats_json, status FROM search_runs ORDER BY id DESC LIMIT 1"
         )
@@ -95,11 +107,61 @@ async def search_stats() -> dict:
             "high_score": high,
             "generated": generated,
             "new_count": new_count,
+            "overdue_count": overdue_count,
             "by_source": sources,
             "last_run": last_run,
         }
     finally:
         await db.close()
+
+
+@router.get("/search/timeline")
+async def timeline(days: int = 21) -> dict:
+    """Nb d'offres par jour (date de publication sinon scraping), N derniers jours."""
+    db = await dbm.connect()
+    try:
+        cur = await db.execute(
+            "SELECT substr(COALESCE(posted_at, scraped_at), 1, 10) AS d, COUNT(*) AS n "
+            "FROM offers WHERE is_hidden=0 GROUP BY d ORDER BY d DESC LIMIT ?",
+            (days,),
+        )
+        rows = await cur.fetchall()
+        out = [{"day": r["d"], "count": r["n"]} for r in rows if r["d"]]
+        out.reverse()
+        return {"days": out}
+    finally:
+        await db.close()
+
+
+@router.get("/backup")
+async def backup_export() -> Response:
+    """Exporte toute la base + le profil en JSON (sauvegarde)."""
+    import json as _j
+    db = await dbm.connect()
+    try:
+        data = await dbm.export_all(db)
+    finally:
+        await db.close()
+    data["profile"] = load_profile()
+    payload = _j.dumps(data, ensure_ascii=False, default=str).encode("utf-8")
+    return Response(
+        payload,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="recherche-alternance-backup.json"'},
+    )
+
+
+@router.post("/backup")
+async def backup_import(payload: dict) -> dict:
+    """Restaure la base depuis un dump JSON (REMPLACE le contenu existant)."""
+    db = await dbm.connect()
+    try:
+        counts = await dbm.import_all(db, payload)
+    finally:
+        await db.close()
+    if isinstance(payload.get("profile"), dict):
+        save_profile(payload["profile"])
+    return {"ok": True, "restored": counts}
 
 
 @router.get("/profile")
