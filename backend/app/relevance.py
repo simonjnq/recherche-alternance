@@ -55,21 +55,41 @@ def _norm(s: str) -> str:
     return "".join(c for c in s if not unicodedata.combining(c)).lower()
 
 
-def is_relevant(offer: OfferRaw, keywords: Optional[Iterable[str]] = None) -> bool:
-    """True si l'offre est dans le domaine ciblé (IA/automation/growth/data/produit)."""
+def is_relevant(
+    offer: OfferRaw,
+    keywords: Optional[Iterable[str]] = None,
+    extra_strong: Optional[Iterable[str]] = None,
+    excluded: Optional[Iterable[str]] = None,
+) -> bool:
+    """True si l'offre est dans le domaine ciblé (IA/automation/growth/data/produit).
+
+    `extra_strong` : mots/expressions "forts" supplémentaires (réglés par l'utilisateur).
+    `excluded` : mots qui, s'ils apparaissent, écartent l'offre (override).
+    """
     text = _norm(f"{offer.title} {offer.description}")
+
+    # Exclusions utilisateur : priorité absolue
+    for ex in (excluded or []):
+        ne = _norm(ex)
+        if ne and ne in text:
+            return False
+
     tokens = {t for t in re.split(r"[^a-z0-9]+", text) if t}
 
     if tokens & _STRONG_WORDS:
         return True
     if any(p in text for p in _STRONG_PHRASES):
         return True
+    # Mots forts supplémentaires de l'utilisateur (sous-chaîne, insensible accents/casse)
+    for s in (extra_strong or []):
+        ns = _norm(s)
+        if ns and ns in text:
+            return True
     if len(tokens & _GENERIC) >= 2:
         return True
     if keywords:
         for kw in keywords:
             nk = _norm(kw)
-            # mot-clé multi-mots distinctif présent tel quel (évite les kw d'un seul mot générique)
             if " " in nk and len(nk) >= 7 and nk in text:
                 return True
     return False

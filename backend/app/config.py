@@ -66,6 +66,12 @@ DEFAULT_PROFILE: dict[str, Any] = {
     },
     "score_threshold_generate": 70,
     "max_offers_per_source": 60,
+    "auto_generate": False,  # False = génération CV/lettre à la demande (économise les crédits)
+    # Entreprises bannies (écoles/CFA qui repostent des offres génériques)
+    "blocked_companies": ["ISCOD", "ICADEMIE", "ISEFAC", "MBWAY", "ECORIS", "PIGIER"],
+    # Réglage du filtre de pertinence (mots forts en plus / mots à exclure)
+    "relevance_strong": [],
+    "relevance_excluded": [],
 }
 
 

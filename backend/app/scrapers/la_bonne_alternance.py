@@ -1,7 +1,12 @@
-"""Scraper La Bonne Alternance (API officielle France Travail / beta.gouv).
+"""Scraper La Bonne Alternance — nouvelle API v3 (api.apprentissage.beta.gouv.fr).
 
-On utilise httpx et non Playwright : l'API est publique (pas d'auth pour /jobs/search).
-Si les endpoints évoluent, on essaie plusieurs variantes.
+L'ancienne API publique (labonnealternance.apprentissage.beta.gouv.fr/api/v1/...)
+a été DÉCOMMISSIONNÉE (HTTP 410). La nouvelle exige une clé d'API gratuite :
+  1. Créer un compte sur https://api.apprentissage.beta.gouv.fr
+  2. Générer un jeton, le mettre dans .env :  LBA_API_KEY=...
+Sans clé, la source est simplement ignorée (log explicite), les autres tournent.
+
+Fallback optionnel : France Travail (OAuth) si FRANCE_TRAVAIL_CLIENT_ID/SECRET.
 """
 from __future__ import annotations
 
@@ -17,10 +22,8 @@ from .base import Scraper, pick_user_agent, polite_delay
 
 logger = logging.getLogger(__name__)
 
-# Endpoint public (pas d'auth requise) : v1/jobsEtFormations sur .beta.gouv.fr.
-# v3 existe mais exige un Bearer token (inscription développeur).
-LBA_BASE = "https://labonnealternance.apprentissage.beta.gouv.fr"
-LBA_ENDPOINTS = [f"{LBA_BASE}/api/v1/jobsEtFormations"]
+# Nouvelle API v3 (clé requise).
+LBA_V3_SEARCH = "https://api.apprentissage.beta.gouv.fr/api/job/v1/search"
 GEO_API = "https://geo.api.gouv.fr/communes"
 
 # Codes ROME pertinents tech/IA/growth/produit
@@ -33,13 +36,14 @@ DEFAULT_ROMES = [
     "E1402",  # Élaboration de plan média
 ]
 
-CALLER = "recherche-alternance-local"
 FRANCE_TRAVAIL_SEARCH = (
     "https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search"
 )
 FRANCE_TRAVAIL_TOKEN_URL = (
     "https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=%2Fpartenaire"
 )
+
+PARIS_LATLON = (48.8566, 2.3522)
 
 
 class LaBonneAlternanceScraper(Scraper):
@@ -56,20 +60,20 @@ class LaBonneAlternanceScraper(Scraper):
             headers={"User-Agent": pick_user_agent(), "Accept": "application/json"},
             follow_redirects=True,
         ) as client:
-            insee = await _geocode_insee(client, location)
-            logger.info("LBA: location=%r → insee=%s", location, insee)
+            lat, lon = await _geocode_latlon(client, location)
+            logger.info("LBA: location=%r → lat=%.4f lon=%.4f", location, lat, lon)
 
-            # 1) API LBA publique
+            # 1) API LBA v3 (clé requise)
             try:
-                async for offer in self._search_lba(
-                    client, keywords, insee, seen_urls, max_per_source - yielded
+                async for offer in self._search_v3(
+                    client, keywords, lat, lon, seen_urls, max_per_source - yielded
                 ):
                     yield offer
                     yielded += 1
                     if yielded >= max_per_source:
                         return
             except Exception as e:
-                logger.warning("LBA public API failed: %s", e)
+                logger.warning("LBA v3 failed: %s", e)
 
             # 2) (optionnel) France Travail si OAuth configuré
             client_id = os.getenv("FRANCE_TRAVAIL_CLIENT_ID", "").strip()
@@ -87,71 +91,65 @@ class LaBonneAlternanceScraper(Scraper):
                                 return
                 except Exception as e:
                     logger.warning("France Travail fallback failed: %s", e)
-            else:
-                logger.info(
-                    "FRANCE_TRAVAIL_CLIENT_ID/SECRET absents — fallback France Travail ignoré."
-                )
 
     # ------------------------------------------------------------------
-    # LBA public
+    # LBA v3
     # ------------------------------------------------------------------
-    async def _search_lba(
+    async def _search_v3(
         self,
         client: httpx.AsyncClient,
         keywords: list[str],
-        insee: str,
+        lat: float,
+        lon: float,
         seen_urls: set[str],
         remaining: int,
     ) -> AsyncIterator[OfferRaw]:
         if remaining <= 0:
             return
-
-        # /api/v1/jobsEtFormations exige insee. On couvre un large rayon pour maximiser
-        # les résultats et on filtre côté client via keywords.
-        params = {
-            "romes": ",".join(DEFAULT_ROMES),
-            "caller": CALLER,
-            "insee": insee,
-            "radius": 30,
-        }
-
-        raw: dict[str, Any] | None = None
-        for endpoint in LBA_ENDPOINTS:
-            try:
-                r = await client.get(endpoint, params=params)
-                if r.status_code != 200:
-                    logger.debug("LBA %s → %s", endpoint, r.status_code)
-                    continue
-                raw = r.json()
-                logger.info("LBA endpoint OK: %s", endpoint)
-                break
-            except Exception as e:
-                logger.debug("LBA %s fail: %s", endpoint, e)
-                continue
-            finally:
-                await polite_delay(0.5, 1.5)
-
-        if not raw:
-            logger.warning("LBA: aucun endpoint n'a répondu.")
+        api_key = os.getenv("LBA_API_KEY", "").strip()
+        if not api_key:
+            logger.warning(
+                "LBA: LBA_API_KEY absente — source ignorée. Crée une clé gratuite sur "
+                "https://api.apprentissage.beta.gouv.fr puis ajoute LBA_API_KEY=... dans .env"
+            )
             return
 
-        jobs = _extract_lba_jobs(raw)
-        logger.info("LBA: %d offres brutes", len(jobs))
+        params = {
+            "latitude": f"{lat:.6f}",
+            "longitude": f"{lon:.6f}",
+            "radius": "30",
+            "romes": ",".join(DEFAULT_ROMES),
+        }
+        headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+        try:
+            r = await client.get(LBA_V3_SEARCH, params=params, headers=headers)
+        except Exception as e:
+            logger.warning("LBA v3 request error: %s", e)
+            return
+        if r.status_code == 401:
+            logger.warning("LBA v3: 401 — clé LBA_API_KEY invalide/expirée.")
+            return
+        if r.status_code not in (200, 206):
+            logger.info("LBA v3 → HTTP %s", r.status_code)
+            return
+        try:
+            data = r.json()
+        except Exception:
+            return
 
-        # Filtre par tokens individuels (mot par mot) — plus permissif qu'un match de phrase.
-        # Les offres passent aussi si la liste keywords est vide.
-        # La pertinence fine est tranchée par le scoring LLM.
+        jobs = data.get("jobs") if isinstance(data, dict) else None
+        if not isinstance(jobs, list):
+            logger.info("LBA v3: réponse inattendue (pas de 'jobs').")
+            return
+        logger.info("LBA v3: %d offres brutes", len(jobs))
+
         kw_tokens = _keyword_tokens(keywords)
         seen_dedup: set[str] = set()
         yielded = 0
         for job in jobs:
-            offer = _lba_job_to_offer(job)
-            if not offer:
+            offer = _v3_job_to_offer(job)
+            if not offer or offer.url in seen_urls:
                 continue
-            if offer.url in seen_urls:
-                continue
-            # LBA renvoie massivement le même poste dupliqué (même peJobs 20x pour une même
-            # annonce). On dedup par titre+entreprise+lieu avant de yield.
             dk = offer.dedup_key()
             if dk in seen_dedup:
                 continue
@@ -163,6 +161,7 @@ class LaBonneAlternanceScraper(Scraper):
             yielded += 1
             if yielded >= remaining:
                 return
+        await polite_delay(0.3, 0.8)
 
     # ------------------------------------------------------------------
     # France Travail (optionnel, OAuth)
@@ -238,97 +237,74 @@ class LaBonneAlternanceScraper(Scraper):
 # ----------------------------------------------------------------------
 # Helpers de parsing
 # ----------------------------------------------------------------------
-def _extract_lba_jobs(raw: dict[str, Any]) -> list[dict[str, Any]]:
-    """La réponse /api/v1/jobsEtFormations a la forme:
-    {formations: {results:[...]}, jobs: {peJobs:{results:[]}, matchas:{results:[]},
-                                           partnerJobs:{results:[]}, lbaCompanies:{results:[]}}}
-    On ne garde que les vraies offres d'emploi (pas les lbaCompanies qui sont des leads
-    sans poste précis).
-    """
-    jobs: list[dict[str, Any]] = []
-    containers = raw.get("jobs") if isinstance(raw.get("jobs"), dict) else raw
-    if not isinstance(containers, dict):
-        return jobs
-    for key in ("peJobs", "matchas", "partnerJobs"):
-        v = containers.get(key)
-        if isinstance(v, dict):
-            results = v.get("results")
-            if isinstance(results, list):
-                jobs.extend(results)
-        elif isinstance(v, list):
-            jobs.extend(v)
-    return jobs
-
-
-async def _geocode_insee(client: httpx.AsyncClient, city: str) -> str:
-    """Convertit un nom de ville en code INSEE via geo.api.gouv.fr. Fallback Paris."""
-    fallback = "75056"  # Paris
+async def _geocode_latlon(client: httpx.AsyncClient, city: str) -> tuple[float, float]:
+    """Nom de ville → (lat, lon) via geo.api.gouv.fr. Fallback Paris."""
     city = (city or "").strip()
     if not city:
-        return fallback
+        return PARIS_LATLON
     try:
         r = await client.get(
             GEO_API,
-            params={"nom": city, "fields": "code,nom,population", "limit": 5, "boost": "population"},
+            params={"nom": city, "fields": "centre", "boost": "population", "limit": 1},
             timeout=10.0,
         )
         if r.status_code == 200:
             data = r.json()
             if isinstance(data, list) and data:
-                code = data[0].get("code")
-                if code:
-                    return str(code)
+                coords = ((data[0] or {}).get("centre") or {}).get("coordinates")
+                if isinstance(coords, list) and len(coords) == 2:
+                    lon, lat = float(coords[0]), float(coords[1])
+                    return lat, lon
     except Exception as e:
         logger.debug("Geo lookup failed for %r: %s", city, e)
-    return fallback
+    return PARIS_LATLON
 
 
-def _lba_job_to_offer(job: dict[str, Any]) -> OfferRaw | None:
+def _v3_job_to_offer(job: dict[str, Any]) -> OfferRaw | None:
+    """Mappe un job de l'API v3 ({offer, workplace, apply, contract}) en OfferRaw."""
     try:
-        title = (
-            job.get("title")
-            or job.get("intitule")
-            or (job.get("job") or {}).get("title")
-            or (job.get("offer") or {}).get("title")
-            or ""
-        ).strip()
+        if not isinstance(job, dict):
+            return None
+        offer = job.get("offer") or {}
+        workplace = job.get("workplace") or {}
+        apply = job.get("apply") or {}
+        contract = job.get("contract") or {}
+
+        title = (offer.get("title") or "").strip()
         if not title:
             return None
 
-        company = None
-        comp = job.get("company") or job.get("entreprise") or {}
-        if isinstance(comp, dict):
-            company = comp.get("name") or comp.get("nom")
-        company = company or job.get("companyName")
+        company = (
+            workplace.get("name")
+            or workplace.get("brand")
+            or workplace.get("legal_name")
+        )
 
         location = None
-        place = job.get("place") or job.get("lieuTravail") or {}
-        if isinstance(place, dict):
-            location = place.get("fullAddress") or place.get("city") or place.get("libelle")
-        location = location or job.get("city")
+        loc = workplace.get("location") or {}
+        if isinstance(loc, dict):
+            location = loc.get("address")
 
-        # URL : priorité à une URL canonique, sinon fallback sur l'ID LBA
-        url = (
-            job.get("url")
-            or job.get("applicationUrl")
-            or job.get("origineOffre", {}).get("urlOrigine")
-            if isinstance(job.get("origineOffre"), dict)
-            else job.get("url")
-        )
+        url = apply.get("url")
         if not url:
-            jid = job.get("id") or job.get("_id") or job.get("jobId")
-            if jid:
-                url = f"https://labonnealternance.apprentissage.beta.gouv.fr/recherche-apprentissage?job={jid}"
-            else:
+            jid = (job.get("identifier") or {}).get("id")
+            if not jid:
                 return None
+            url = f"https://labonnealternance.apprentissage.beta.gouv.fr/recherche?type=offre&itemId={jid}"
 
-        description = (
-            job.get("description")
-            or (job.get("job") or {}).get("description")
-            or job.get("jobDescription")
-            or ""
-        )
-        contract = job.get("contractType") or job.get("typeContrat") or "Alternance"
+        ctype = contract.get("type")
+        if isinstance(ctype, list) and ctype:
+            contract_str = ", ".join(str(x) for x in ctype)
+        elif isinstance(ctype, str) and ctype:
+            contract_str = ctype
+        else:
+            contract_str = "Alternance"
+
+        description = str(offer.get("description") or "")[:20000]
+        posted = None
+        pub = offer.get("publication") or {}
+        if isinstance(pub, dict):
+            posted = pub.get("creation")
 
         return OfferRaw(
             source="la_bonne_alternance",
@@ -336,11 +312,12 @@ def _lba_job_to_offer(job: dict[str, Any]) -> OfferRaw | None:
             title=title,
             company=company,
             location=location,
-            contract=str(contract) if contract else "Alternance",
-            description=str(description)[:20000],
+            contract=contract_str,
+            description=description,
+            posted_at=posted,
         )
     except Exception as e:
-        logger.debug("LBA parse error: %s", e)
+        logger.debug("LBA v3 parse error: %s", e)
         return None
 
 
@@ -370,11 +347,6 @@ def _ft_job_to_offer(job: dict[str, Any]) -> OfferRaw | None:
         return None
 
 
-def _matches_any_keyword(offer: OfferRaw, kw_lower: list[str]) -> bool:
-    hay = f"{offer.title} {offer.company or ''} {offer.description}".lower()
-    return any(kw in hay for kw in kw_lower)
-
-
 # Tokens à ignorer quand on tokenise les keywords utilisateur (trop génériques).
 _STOP_TOKENS = {
     "alternance", "apprentissage", "paris", "ile", "france",
@@ -384,10 +356,7 @@ _STOP_TOKENS = {
 
 
 def _keyword_tokens(keywords: list[str]) -> set[str]:
-    """Casse chaque keyword en mots, garde ceux >= 2 chars et non-stop.
-
-    min_len=2 pour laisser passer IA, AI, PM, UX, UI — sigles importants.
-    """
+    """Casse chaque keyword en mots, garde ceux >= 2 chars et non-stop."""
     out: set[str] = set()
     for k in keywords:
         for tok in re.split(r"[^a-zA-Z0-9]+", k.lower()):
