@@ -81,6 +81,55 @@ const ACCENT_PRESETS = [
 ];
 const FONT_OPTIONS: CVStyle["font"][] = ["Poppins", "Inter", "Manrope"];
 
+// #13 — Bibliothèque de gabarits de style CV (persistés en localStorage)
+function StylePresets({
+  style,
+  onApply,
+}: {
+  style: CVStyle;
+  onApply: (st: CVStyle) => void;
+}) {
+  const [presets, setPresets] = useState<Record<string, CVStyle>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("cv_style_presets") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const names = Object.keys(presets);
+  const save = () => {
+    const name = prompt("Nom du gabarit ?")?.trim();
+    if (!name) return;
+    const next = { ...presets, [name]: style };
+    setPresets(next);
+    localStorage.setItem("cv_style_presets", JSON.stringify(next));
+  };
+  return (
+    <span className="inline-flex items-center gap-1" title="Gabarits de style enregistrés">
+      <select
+        value=""
+        onChange={(e) => {
+          const p = presets[e.target.value];
+          if (p) onApply(p);
+        }}
+        className="text-xs border border-outline-variant rounded px-1.5 py-1 max-w-[120px]"
+      >
+        <option value="">Gabarits…</option>
+        {names.map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
+      <button
+        onClick={save}
+        title="Enregistrer le style actuel comme gabarit"
+        className="inline-flex items-center text-xs px-1.5 py-1 rounded border border-outline-variant text-on-surface hover:border-outline hover:bg-surface-c"
+      >
+        <Save size={12} />
+      </button>
+    </span>
+  );
+}
+
 const A4_W = 794;   // 210mm @ 96dpi
 const A4_H = 1123;  // 297mm
 
@@ -276,6 +325,23 @@ export function CVVisualEditor({ offerId }: Props) {
     };
   }, [data, offerId]);
 
+  // Télécharge le PDF en garantissant que le cv.html persisté reflète l'état
+  // courant (densité comprise) : on flush la sauvegarde en attente avant d'ouvrir.
+  const handleDownloadPdf = useCallback(async () => {
+    if (!data) return;
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    setSaving(true);
+    try {
+      await putCVEditable(offerId, data.structured, data.style);
+      setSaved("saved");
+    } catch {
+      setSaved("dirty");
+    } finally {
+      setSaving(false);
+    }
+    window.open(downloadCVPdfUrl(offerId), "_blank", "noopener");
+  }, [data, offerId]);
+
   // --- Mutations ---
   const updateStructured = useCallback((mut: (s: CVStructured) => CVStructured) => {
     setData((d) => (d ? { ...d, structured: mut(d.structured) } : d));
@@ -408,7 +474,7 @@ export function CVVisualEditor({ offerId }: Props) {
   );
 
   if (!data) {
-    return <div className="p-6 text-sm text-neutral-500">Chargement de l'éditeur…</div>;
+    return <div className="p-6 text-sm text-on-surface-variant">Chargement de l'éditeur…</div>;
   }
 
   return (
@@ -416,7 +482,6 @@ export function CVVisualEditor({ offerId }: Props) {
       <Toolbar
         style={data.style}
         onChangeStyle={updateStyle}
-        offerId={offerId}
         zoom={zoom}
         onZoom={setZoom}
         previewMode={previewMode}
@@ -430,6 +495,7 @@ export function CVVisualEditor({ offerId }: Props) {
         historyTick={historyVersion}
         onOpenGlobalAI={() => setGlobalAIOpen(true)}
         onOpenInspirations={() => setInspirationsOpen(true)}
+        onDownloadPdf={handleDownloadPdf}
         templates={templates}
       />
       {globalAIOpen && (
@@ -461,7 +527,7 @@ export function CVVisualEditor({ offerId }: Props) {
           previewMode={previewMode}
         />
         {!previewMode && (
-          <aside className="w-[400px] shrink-0 border-l border-neutral-200 bg-white flex flex-col overflow-hidden">
+          <aside className="w-[400px] shrink-0 border-l border-outline-variant bg-surface-lowest flex flex-col overflow-hidden">
             <BlockPanel
               offerId={offerId}
               data={data}
@@ -486,7 +552,6 @@ type DOMRectLike = { top: number; left: number; width: number; height: number };
 function Toolbar({
   style,
   onChangeStyle,
-  offerId,
   zoom,
   onZoom,
   previewMode,
@@ -499,11 +564,11 @@ function Toolbar({
   onRedo,
   onOpenGlobalAI,
   onOpenInspirations,
+  onDownloadPdf,
   templates,
 }: {
   style: CVStyle;
   onChangeStyle: (mut: (s: CVStyle) => CVStyle) => void;
-  offerId: number;
   zoom: number;
   onZoom: (z: number) => void;
   previewMode: boolean;
@@ -517,10 +582,11 @@ function Toolbar({
   onRedo: () => void;
   historyTick: number;
   onOpenGlobalAI: () => void;
+  onDownloadPdf: () => void;
   templates: CVTemplateInfo[];
 }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2 border-b border-neutral-200 bg-white text-sm">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2 border-b border-outline-variant bg-surface-lowest text-sm">
       {/* Undo/Redo */}
       <IconBtn onClick={onUndo} disabled={!canUndo} title="Annuler (⌘Z)">
         <Undo2 size={14} />
@@ -533,7 +599,7 @@ function Toolbar({
       {/* Global AI */}
       <button
         onClick={onOpenGlobalAI}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white hover:from-violet-700 hover:to-fuchsia-700 shadow-sm"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-gradient-to-br from-tertiary to-fuchsia-600 text-white hover:brightness-110 hover:to-fuchsia-700 shadow-sm"
         title="IA globale — retravaille tout le CV"
       >
         <Wand2 size={12} /> IA globale
@@ -542,7 +608,7 @@ function Toolbar({
       <Sep />
 
       {/* Accent */}
-      <span className="text-[11px] text-neutral-500 ml-1">Accent</span>
+      <span className="text-[11px] text-on-surface-variant ml-1">Accent</span>
       <div className="flex gap-1">
         {ACCENT_PRESETS.map((c) => (
           <button
@@ -552,8 +618,8 @@ function Toolbar({
             className={cn(
               "w-4 h-4 rounded-full border",
               style.accent_color.toLowerCase() === c.toLowerCase()
-                ? "ring-2 ring-offset-1 ring-neutral-900 border-white"
-                : "border-neutral-300"
+                ? "ring-2 ring-offset-1 ring-tertiary border-white"
+                : "border-outline-variant"
             )}
             aria-label={`Accent ${c}`}
           />
@@ -563,14 +629,14 @@ function Toolbar({
         type="color"
         value={style.accent_color}
         onChange={(e) => onChangeStyle((s) => ({ ...s, accent_color: e.target.value }))}
-        className="w-6 h-6 rounded border border-neutral-200 cursor-pointer"
+        className="w-6 h-6 rounded border border-outline-variant cursor-pointer"
         aria-label="Custom"
       />
 
       <Sep />
 
       {/* Density */}
-      <span className="text-[11px] text-neutral-500">Densité</span>
+      <span className="text-[11px] text-on-surface-variant">Densité</span>
       <input
         type="range"
         min={0.7}
@@ -578,20 +644,20 @@ function Toolbar({
         step={0.05}
         value={style.density}
         onChange={(e) => onChangeStyle((s) => ({ ...s, density: Number(e.target.value) }))}
-        className="w-20 accent-neutral-900"
+        className="w-20 accent-[var(--tertiary)]"
       />
-      <span className="text-[11px] text-neutral-500 w-6 tabular-nums">{style.density.toFixed(2)}</span>
+      <span className="text-[11px] text-on-surface-variant w-6 tabular-nums">{style.density.toFixed(2)}</span>
 
       <Sep />
 
       {/* Template */}
       {templates.length > 0 && (
         <label className="inline-flex items-center gap-1.5" title="Template visuel">
-          <Layout size={12} className="text-neutral-500" />
+          <Layout size={12} className="text-on-surface-variant" />
           <select
             value={style.template ?? "modern_2col"}
             onChange={(e) => onChangeStyle((s) => ({ ...s, template: e.target.value }))}
-            className="text-xs border border-neutral-200 rounded px-1.5 py-1 max-w-[160px]"
+            className="text-xs border border-outline-variant rounded px-1.5 py-1 max-w-[160px]"
           >
             {templates.map((t) => (
               <option key={t.key} value={t.key} title={t.description}>{t.label}</option>
@@ -599,10 +665,11 @@ function Toolbar({
           </select>
         </label>
       )}
+      <StylePresets style={style} onApply={(st) => onChangeStyle((s) => ({ ...s, ...st }))} />
       <button
         onClick={onOpenInspirations}
         title="Galerie d'inspirations CV (scraped) — clone le style avec l'IA"
-        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-neutral-200 text-neutral-700 hover:border-neutral-400 hover:bg-neutral-50"
+        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-outline-variant text-on-surface hover:border-outline hover:bg-surface-c"
       >
         <ImageIcon size={12} /> Inspirations
       </button>
@@ -613,7 +680,7 @@ function Toolbar({
       <select
         value={style.font}
         onChange={(e) => onChangeStyle((s) => ({ ...s, font: e.target.value as CVStyle["font"] }))}
-        className="text-xs border border-neutral-200 rounded px-1.5 py-1"
+        className="text-xs border border-outline-variant rounded px-1.5 py-1"
         title="Police"
       >
         {FONT_OPTIONS.map((f) => (
@@ -627,9 +694,9 @@ function Toolbar({
           type="checkbox"
           checked={style.photo_enabled}
           onChange={(e) => onChangeStyle((s) => ({ ...s, photo_enabled: e.target.checked }))}
-          className="accent-neutral-900"
+          className="accent-[var(--tertiary)]"
         />
-        <span className="text-[11px] text-neutral-700">Photo</span>
+        <span className="text-[11px] text-on-surface">Photo</span>
       </label>
 
       <div className="ml-auto flex items-center gap-1.5">
@@ -640,7 +707,7 @@ function Toolbar({
         <select
           value={ZOOM_PRESETS.includes(zoom) ? zoom : 1.0}
           onChange={(e) => onZoom(Number(e.target.value))}
-          className="text-xs border border-neutral-200 rounded px-1.5 py-1"
+          className="text-xs border border-outline-variant rounded px-1.5 py-1"
           title="Zoom"
         >
           {ZOOM_PRESETS.map((z) => (
@@ -660,24 +727,29 @@ function Toolbar({
           {previewMode ? <EyeOff size={14} /> : <Eye size={14} />}
         </IconBtn>
 
-        <span className="text-xs text-neutral-500 min-w-[80px] text-right">
+        <span className="text-xs text-on-surface-variant min-w-[80px] text-right">
           {saving ? (
             <span className="inline-flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> …</span>
           ) : saved === "saved" ? (
-            <span className="text-emerald-700 inline-flex items-center gap-1"><Save size={11} /> Sauvé</span>
+            <span className="text-secondary inline-flex items-center gap-1"><Save size={11} /> Sauvé</span>
           ) : saved === "dirty" ? (
-            <span className="text-neutral-400">Modifs…</span>
+            <span className="text-on-surface-variant">Modifs…</span>
           ) : null}
         </span>
 
-        <a
-          href={downloadCVPdfUrl(offerId)}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-200 hover:border-neutral-400 inline-flex items-center gap-1.5"
+        <button
+          onClick={onDownloadPdf}
+          disabled={saving}
+          title="Sauvegarde l'état courant puis télécharge le PDF (identique à l'aperçu)"
+          className="btn-primary btn-sm"
         >
-          <Download size={12} /> PDF
-        </a>
+          {saving ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <Download size={12} />
+          )}
+          Télécharger PDF
+        </button>
       </div>
     </div>
   );
@@ -727,12 +799,12 @@ function GlobalAIBar({
 }) {
   const [text, setText] = useState("");
   return (
-    <div className="border-b border-violet-200 bg-gradient-to-r from-violet-50 via-fuchsia-50 to-violet-50">
+    <div className="border-b border-tertiary bg-gradient-to-r from-tertiary-container via-fuchsia-50 to-tertiary-container">
       <div className="px-4 py-3 flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Wand2 size={14} className="text-violet-700" />
-          <div className="text-xs font-semibold text-violet-900">IA globale — réécris le CV entier</div>
-          <button onClick={onClose} className="ml-auto text-neutral-400 hover:text-neutral-900" title="Fermer (Esc)">
+          <Wand2 size={14} className="text-tertiary" />
+          <div className="text-xs font-semibold text-on-tertiary-container">IA globale — réécris le CV entier</div>
+          <button onClick={onClose} className="ml-auto text-on-surface-variant hover:text-on-surface" title="Fermer (Esc)">
             <X size={14} />
           </button>
         </div>
@@ -745,8 +817,8 @@ function GlobalAIBar({
               className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors",
                 busy
-                  ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed"
-                  : "bg-white text-violet-900 border-violet-200 hover:bg-violet-100 hover:border-violet-400"
+                  ? "bg-surface-container text-on-surface-variant border-outline-variant cursor-not-allowed"
+                  : "bg-surface-lowest text-on-tertiary-container border-tertiary hover:bg-tertiary-container hover:border-tertiary"
               )}
             >
               <Sparkles size={11} />
@@ -768,7 +840,7 @@ function GlobalAIBar({
             placeholder="Ou décris ce que tu veux changer sur tout le CV… (⌘+Enter pour appliquer)"
             rows={2}
             disabled={busy}
-            className="flex-1 text-sm border border-violet-200 rounded-md px-3 py-2 bg-white focus:border-violet-500 focus:outline-none resize-none"
+            className="flex-1 text-sm border border-tertiary rounded-md px-3 py-2 bg-surface-lowest focus:border-tertiary focus:outline-none resize-none"
           />
           <button
             onClick={() => text.trim() && onApply(text)}
@@ -776,17 +848,17 @@ function GlobalAIBar({
             className={cn(
               "shrink-0 px-3 rounded-md text-xs font-semibold inline-flex items-center gap-1.5",
               busy || !text.trim()
-                ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
-                : "bg-violet-700 text-white hover:bg-violet-800"
+                ? "bg-surface-highest text-on-surface-variant cursor-not-allowed"
+                : "bg-tertiary text-white hover:brightness-110"
             )}
           >
             {busy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
             {busy ? "Réécriture…" : "Appliquer"}
           </button>
         </div>
-        {error && <div className="text-xs text-red-700">{error}</div>}
+        {error && <div className="text-xs text-on-error-container">{error}</div>}
         {busy && (
-          <div className="text-[11px] text-violet-700">
+          <div className="text-[11px] text-tertiary">
             Sonnet retravaille le CV (≈8-15s, ~0.02€). Tu peux annuler avec ⌘Z après.
           </div>
         )}
@@ -816,10 +888,10 @@ function IconBtn({
       className={cn(
         "p-1.5 rounded-md border border-transparent",
         disabled
-          ? "text-neutral-300 cursor-not-allowed"
+          ? "text-on-surface-variant cursor-not-allowed"
           : active
-            ? "bg-neutral-900 text-white"
-            : "text-neutral-700 hover:bg-neutral-100 hover:border-neutral-200"
+            ? "bg-navy text-white"
+            : "text-on-surface hover:bg-surface-container hover:border-outline-variant"
       )}
     >
       {children}
@@ -828,7 +900,7 @@ function IconBtn({
 }
 
 function Sep() {
-  return <span className="w-px h-5 bg-neutral-200 mx-1" />;
+  return <span className="w-px h-5 bg-surface-highest mx-1" />;
 }
 
 // ----------------------------------------------------------------------
@@ -880,11 +952,11 @@ function Canvas({
   const wrapperH = Math.ceil(A4_H * zoom);
 
   return (
-    <div className="flex-1 min-w-0 bg-neutral-100 overflow-auto relative">
+    <div className="flex-1 min-w-0 bg-surface-container overflow-auto relative">
       <div className="mx-auto py-8 flex justify-center">
         <div className="relative" style={{ width: wrapperW, height: wrapperH }}>
           <div
-            className="bg-white shadow-lg origin-top-left"
+            className="bg-surface-lowest shadow-lg origin-top-left"
             style={{
               width: A4_W,
               height: A4_H,
@@ -931,7 +1003,7 @@ function FloatingActions({
   const left = rect.left * zoom;
   return (
     <div
-      className="absolute z-10 flex gap-0.5 bg-white border border-neutral-200 rounded-md shadow-lg p-0.5"
+      className="absolute z-10 flex gap-0.5 bg-surface-lowest border border-outline-variant rounded-md shadow-lg p-0.5"
       style={{ top, left }}
     >
       {actions.includes("edit-inline") && (
@@ -979,8 +1051,8 @@ function ActBtn({
       onClick={onClick}
       title={title}
       className={cn(
-        "p-1.5 rounded text-neutral-600 hover:bg-neutral-100",
-        danger && "hover:bg-red-50 hover:text-red-700"
+        "p-1.5 rounded text-on-surface-variant hover:bg-surface-container",
+        danger && "hover:bg-error-container hover:text-on-error-container"
       )}
     >
       {children}
@@ -1087,20 +1159,20 @@ function BlockPanel({
 function PanelHeader({ selected, onClear }: { selected: string | null; onClear: () => void }) {
   if (!selected) {
     return (
-      <div className="px-4 py-2.5 border-b border-neutral-200 bg-gradient-to-b from-neutral-50 to-white text-[11px] uppercase tracking-wide text-neutral-500 font-medium">
+      <div className="px-4 py-2.5 border-b border-outline-variant bg-gradient-to-b from-surface-container-low to-surface-lowest text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">
         Survol — clique un bloc du CV pour l'éditer
       </div>
     );
   }
   const segs = selected.split(".");
   return (
-    <div className="px-4 py-2 border-b border-neutral-200 bg-gradient-to-b from-neutral-50 to-white flex items-center gap-2">
-      <button onClick={onClear} className="text-neutral-400 hover:text-neutral-900 text-xs">←</button>
-      <div className="flex items-center gap-1 text-[11px] text-neutral-500 truncate">
+    <div className="px-4 py-2 border-b border-outline-variant bg-gradient-to-b from-surface-container-low to-surface-lowest flex items-center gap-2">
+      <button onClick={onClear} className="text-on-surface-variant hover:text-on-surface text-xs">←</button>
+      <div className="flex items-center gap-1 text-[11px] text-on-surface-variant truncate">
         {segs.map((s, i) => (
           <span key={i} className="inline-flex items-center gap-1">
-            {i > 0 && <span className="text-neutral-300">/</span>}
-            <span className={cn(i === segs.length - 1 && "text-neutral-900 font-medium")}>{s}</span>
+            {i > 0 && <span className="text-on-surface-variant">/</span>}
+            <span className={cn(i === segs.length - 1 && "text-on-surface font-medium")}>{s}</span>
           </span>
         ))}
       </div>
@@ -1128,8 +1200,8 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="p-4 border-b border-neutral-200 space-y-3">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">{title}</div>
+    <div className="p-4 border-b border-outline-variant space-y-3">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">{title}</div>
       {children}
       <AIBlockInput
         path={path}
@@ -1177,7 +1249,7 @@ function AIBlockInput({
         onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
         placeholder="✨ Demander à l'IA…"
         className={cn(
-          "flex-1 text-xs border border-neutral-200 rounded-md px-2.5 focus:border-neutral-400 outline-none",
+          "flex-1 text-xs border border-outline-variant rounded-md px-2.5 focus:border-tertiary outline-none",
           small ? "py-1" : "py-1.5"
         )}
       />
@@ -1187,8 +1259,8 @@ function AIBlockInput({
         className={cn(
           "px-2.5 rounded-md text-xs font-medium inline-flex items-center gap-1",
           busy || !instr.trim()
-            ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
-            : "bg-neutral-900 text-white hover:bg-neutral-800"
+            ? "bg-surface-container text-on-surface-variant cursor-not-allowed"
+            : "bg-navy text-white hover:bg-[#1d2841]"
         )}
       >
         {busy ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
@@ -1216,16 +1288,16 @@ function Overview({
   ];
   return (
     <div className="p-4 space-y-2">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Édition rapide</div>
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Édition rapide</div>
       <div className="grid grid-cols-2 gap-1.5">
         {items.map((it) => (
           <button
             key={it.path}
             onClick={() => onSelect(it.path)}
-            className="text-left px-3 py-2 rounded-md border border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50 group"
+            className="text-left px-3 py-2 rounded-md border border-outline-variant hover:border-outline hover:bg-surface-c group"
           >
-            <div className="text-[11px] font-medium text-neutral-700">{it.label}</div>
-            <div className="text-[11px] text-neutral-500 truncate group-hover:text-neutral-700">{it.sub}</div>
+            <div className="text-[11px] font-medium text-on-surface">{it.label}</div>
+            <div className="text-[11px] text-on-surface-variant truncate group-hover:text-on-surface">{it.sub}</div>
           </button>
         ))}
       </div>
@@ -1263,17 +1335,17 @@ function SectionsOutline({
   };
   void toggleHide;
   return (
-    <div className="p-4 border-t border-neutral-200 bg-neutral-50/60">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium mb-2">Sections</div>
+    <div className="p-4 border-t border-outline-variant bg-surface-container-low">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium mb-2">Sections</div>
       <div className="space-y-0.5">
         {sections.map((s) => (
           <button
             key={s.key as string}
             onClick={() => onSelect(s.key as string)}
-            className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs hover:bg-neutral-200/60"
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs hover:bg-surface-highest"
           >
-            <span className="text-neutral-700">{s.label}</span>
-            <span className="text-neutral-400 tabular-nums">{s.count}</span>
+            <span className="text-on-surface">{s.label}</span>
+            <span className="text-on-surface-variant tabular-nums">{s.count}</span>
           </button>
         ))}
       </div>
@@ -1286,7 +1358,7 @@ function SectionsOutline({
           next.projects_personal = a;
           onUpdateStructured(next);
         }}
-        className="mt-2 w-full text-[11px] text-neutral-500 hover:text-neutral-900 inline-flex items-center justify-center gap-1 py-1"
+        className="mt-2 w-full text-[11px] text-on-surface-variant hover:text-on-surface inline-flex items-center justify-center gap-1 py-1"
         title="Inverser l'ordre des deux blocs de projets"
       >
         <ChevronUp size={10} /><ChevronDown size={10} /> Inverser pédago / perso
@@ -1323,7 +1395,7 @@ function FieldInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5 focus:border-neutral-400 outline-none"
+      className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5 focus:border-tertiary outline-none"
     />
   );
 }
@@ -1345,7 +1417,7 @@ function FieldTextarea({
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       placeholder={placeholder}
-      className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5 leading-snug resize-y focus:border-neutral-400 outline-none"
+      className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5 leading-snug resize-y focus:border-tertiary outline-none"
     />
   );
 }
@@ -1363,7 +1435,7 @@ function QualityHint({
       : value.length;
   const ok = count >= target.min && count <= target.max;
   const short = count < target.min;
-  const tone = ok ? "text-emerald-700" : short ? "text-amber-700" : "text-red-700";
+  const tone = ok ? "text-secondary" : short ? "text-secondary" : "text-on-error-container";
   const label = ok
     ? "longueur OK"
     : short
@@ -1393,8 +1465,8 @@ function ContactEditor({
   const setField = (key: keyof CVStructured["contact"]) => (v: string) =>
     onUpdate((s) => ({ ...s, contact: { ...s.contact, [key]: v || null } }));
   return (
-    <div className="p-4 space-y-2.5 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Contact</div>
+    <div className="p-4 space-y-2.5 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Contact</div>
       <div className="grid grid-cols-2 gap-2">
         <FieldInput value={struct.contact.email ?? ""} onChange={setField("email")} placeholder="Email" />
         <FieldInput value={struct.contact.phone ?? ""} onChange={setField("phone")} placeholder="Téléphone" />
@@ -1435,10 +1507,10 @@ function SortableStringList({
   const items = values.map((_, i) => `${id}:${i}`);
   const canAdd = !max || values.length < max;
   return (
-    <div className="p-4 space-y-2 border-b border-neutral-200">
+    <div className="p-4 space-y-2 border-b border-outline-variant">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">{label}</div>
-        {max && <span className="text-[10px] text-neutral-400">{values.length}/{max}</span>}
+        <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">{label}</div>
+        {max && <span className="text-[10px] text-on-surface-variant">{values.length}/{max}</span>}
       </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
@@ -1459,7 +1531,7 @@ function SortableStringList({
       {canAdd && (
         <button
           onClick={() => onChange([...values, ""])}
-          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-neutral-300 hover:border-neutral-500 text-neutral-600"
+          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-outline-variant hover:border-outline text-on-surface-variant"
         >
           <Plus size={11} /> Ajouter
         </button>
@@ -1485,7 +1557,7 @@ function SortableStringRow({
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-1.5 group">
-      <button {...attributes} {...listeners} className="text-neutral-300 group-hover:text-neutral-600 cursor-grab touch-none">
+      <button {...attributes} {...listeners} className="text-on-surface-variant group-hover:text-on-surface-variant cursor-grab touch-none">
         <GripVertical size={13} />
       </button>
       <input
@@ -1493,9 +1565,9 @@ function SortableStringRow({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 text-sm border border-neutral-200 rounded-md px-2 py-1 focus:border-neutral-400 outline-none"
+        className="flex-1 text-sm border border-outline-variant rounded-md px-2 py-1 focus:border-tertiary outline-none"
       />
-      <button onClick={onRemove} className="text-neutral-300 group-hover:text-red-700">
+      <button onClick={onRemove} className="text-on-surface-variant group-hover:text-on-error-container">
         <Trash2 size={13} />
       </button>
     </div>
@@ -1508,18 +1580,18 @@ function SortableStringRow({
 
 function LanguageEditor({ values, onChange }: { values: CVLanguage[]; onChange: (v: CVLanguage[]) => void }) {
   return (
-    <div className="p-4 space-y-2 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Langues</div>
+    <div className="p-4 space-y-2 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Langues</div>
       {values.map((l, i) => (
         <div key={i} className="flex gap-1.5 group">
           <input type="text" value={l.name} onChange={(e) => onChange(values.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-            placeholder="Français" className="flex-1 text-sm border border-neutral-200 rounded-md px-2 py-1" />
+            placeholder="Français" className="flex-1 text-sm border border-outline-variant rounded-md px-2 py-1" />
           <input type="text" value={l.level ?? ""} onChange={(e) => onChange(values.map((x, j) => (j === i ? { ...x, level: e.target.value || null } : x)))}
-            placeholder="C1" className="w-20 text-sm border border-neutral-200 rounded-md px-2 py-1" />
-          <button onClick={() => onChange(values.filter((_, j) => j !== i))} className="text-neutral-300 group-hover:text-red-700"><Trash2 size={13} /></button>
+            placeholder="C1" className="w-20 text-sm border border-outline-variant rounded-md px-2 py-1" />
+          <button onClick={() => onChange(values.filter((_, j) => j !== i))} className="text-on-surface-variant group-hover:text-on-error-container"><Trash2 size={13} /></button>
         </div>
       ))}
-      <button onClick={() => onChange([...values, { name: "", level: null }])} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-neutral-300 hover:border-neutral-500 text-neutral-600">
+      <button onClick={() => onChange([...values, { name: "", level: null }])} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-outline-variant hover:border-outline text-on-surface-variant">
         <Plus size={11} /> Ajouter
       </button>
     </div>
@@ -1528,22 +1600,22 @@ function LanguageEditor({ values, onChange }: { values: CVLanguage[]; onChange: 
 
 function FormationListEditor({ values, onChange }: { values: CVFormation[]; onChange: (v: CVFormation[]) => void }) {
   return (
-    <div className="p-4 space-y-2 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Formations</div>
+    <div className="p-4 space-y-2 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Formations</div>
       {values.map((f, i) => (
-        <div key={i} className="border border-neutral-200 rounded-md p-2 space-y-1 group">
+        <div key={i} className="border border-outline-variant rounded-md p-2 space-y-1 group">
           <input type="text" value={f.degree} onChange={(e) => onChange(values.map((x, j) => (j === i ? { ...x, degree: e.target.value } : x)))}
             placeholder="Diplôme" className="w-full text-sm font-medium border-none focus:outline-none bg-transparent" />
           <input type="text" value={f.school} onChange={(e) => onChange(values.map((x, j) => (j === i ? { ...x, school: e.target.value } : x)))}
             placeholder="École" className="w-full text-sm border-none focus:outline-none bg-transparent" />
           <div className="flex items-center justify-between">
             <input type="text" value={f.period} onChange={(e) => onChange(values.map((x, j) => (j === i ? { ...x, period: e.target.value } : x)))}
-              placeholder="2023 — 2026" className="flex-1 text-xs text-neutral-500 italic border-none focus:outline-none bg-transparent" />
-            <button onClick={() => onChange(values.filter((_, j) => j !== i))} className="text-neutral-300 group-hover:text-red-700"><Trash2 size={13} /></button>
+              placeholder="2023 — 2026" className="flex-1 text-xs text-on-surface-variant italic border-none focus:outline-none bg-transparent" />
+            <button onClick={() => onChange(values.filter((_, j) => j !== i))} className="text-on-surface-variant group-hover:text-on-error-container"><Trash2 size={13} /></button>
           </div>
         </div>
       ))}
-      <button onClick={() => onChange([...values, { degree: "", school: "", period: "" }])} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-neutral-300 hover:border-neutral-500 text-neutral-600">
+      <button onClick={() => onChange([...values, { degree: "", school: "", period: "" }])} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-outline-variant hover:border-outline text-on-surface-variant">
         <Plus size={11} /> Ajouter
       </button>
     </div>
@@ -1552,11 +1624,11 @@ function FormationListEditor({ values, onChange }: { values: CVFormation[]; onCh
 
 function FormationEditor({ index, values, onChange }: { index: number; values: CVFormation[]; onChange: (v: CVFormation[]) => void }) {
   const f = values[index];
-  if (!f) return <div className="p-4 text-xs text-neutral-500">Formation introuvable</div>;
+  if (!f) return <div className="p-4 text-xs text-on-surface-variant">Formation introuvable</div>;
   const setAt = (patch: Partial<CVFormation>) => onChange(values.map((x, j) => (j === index ? { ...x, ...patch } : x)));
   return (
-    <div className="p-4 space-y-2 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Formation</div>
+    <div className="p-4 space-y-2 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Formation</div>
       <FieldInput value={f.degree} onChange={(v) => setAt({ degree: v })} placeholder="Diplôme" />
       <FieldInput value={f.school} onChange={(v) => setAt({ school: v })} placeholder="École" />
       <FieldInput value={f.period} onChange={(v) => setAt({ period: v })} placeholder="2023 — 2026" />
@@ -1587,8 +1659,8 @@ function ExperienceListEditor({
     onChange(arrayMove(values, a, b));
   };
   return (
-    <div className="p-4 space-y-2 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Expériences pro</div>
+    <div className="p-4 space-y-2 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Expériences pro</div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           <div className="space-y-1.5">
@@ -1602,7 +1674,7 @@ function ExperienceListEditor({
         </SortableContext>
       </DndContext>
       <button onClick={() => onChange([...values, { company: "", role: "", period: "", bullets: [] }])}
-        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-neutral-300 hover:border-neutral-500 text-neutral-600">
+        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-outline-variant hover:border-outline text-on-surface-variant">
         <Plus size={11} /> Ajouter une expérience
       </button>
     </div>
@@ -1614,14 +1686,14 @@ function SortableExpRow({ id, exp, onClick, onRemove }: { id: string; exp: CVExp
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-1.5 group">
-      <button {...attributes} {...listeners} className="text-neutral-300 group-hover:text-neutral-600 cursor-grab touch-none">
+      <button {...attributes} {...listeners} className="text-on-surface-variant group-hover:text-on-surface-variant cursor-grab touch-none">
         <GripVertical size={13} />
       </button>
-      <button onClick={onClick} className="flex-1 text-left px-2 py-1.5 rounded-md border border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50">
+      <button onClick={onClick} className="flex-1 text-left px-2 py-1.5 rounded-md border border-outline-variant hover:border-outline hover:bg-surface-c">
         <div className="text-xs font-medium truncate">{exp.role || "Poste"} · {exp.company || "—"}</div>
-        <div className="text-[10px] text-neutral-500 truncate">{exp.period || "—"} · {exp.bullets.length} bullets</div>
+        <div className="text-[10px] text-on-surface-variant truncate">{exp.period || "—"} · {exp.bullets.length} bullets</div>
       </button>
-      <button onClick={onRemove} className="text-neutral-300 group-hover:text-red-700"><Trash2 size={13} /></button>
+      <button onClick={onRemove} className="text-on-surface-variant group-hover:text-on-error-container"><Trash2 size={13} /></button>
     </div>
   );
 }
@@ -1641,13 +1713,13 @@ function ExperienceEditor({
 }) {
   const expIdx = Number(segs[1]);
   const exp = values[expIdx];
-  if (!exp) return <div className="p-4 text-xs text-neutral-500">Expérience introuvable</div>;
+  if (!exp) return <div className="p-4 text-xs text-on-surface-variant">Expérience introuvable</div>;
   const setExp = (patch: Partial<CVExperience>) =>
     onChange(values.map((x, j) => (j === expIdx ? { ...x, ...patch } : x)));
   const bulletIdx = segs[2] === "bullets" && segs[3] != null ? Number(segs[3]) : null;
   return (
-    <div className="p-4 space-y-3 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Expérience</div>
+    <div className="p-4 space-y-3 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Expérience</div>
       <FieldInput value={exp.company} onChange={(v) => setExp({ company: v })} placeholder="Entreprise" />
       <FieldInput value={exp.role} onChange={(v) => setExp({ role: v })} placeholder="Poste" />
       <FieldInput value={exp.period} onChange={(v) => setExp({ period: v })} placeholder="Période" />
@@ -1701,10 +1773,10 @@ function BulletsEditor({
   };
   return (
     <div>
-      <div className="text-[11px] text-neutral-500 mb-1.5 flex items-center justify-between">
+      <div className="text-[11px] text-on-surface-variant mb-1.5 flex items-center justify-between">
         <span>Bullets</span>
         {focusIndex !== null && (
-          <button onClick={onClearBulletFocus} className="text-[10px] text-neutral-500 hover:text-neutral-900">← retour expérience</button>
+          <button onClick={onClearBulletFocus} className="text-[10px] text-on-surface-variant hover:text-on-surface">← retour expérience</button>
         )}
       </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1729,7 +1801,7 @@ function BulletsEditor({
         </SortableContext>
       </DndContext>
       <button onClick={() => onChange([...bullets, ""])}
-        className="mt-1.5 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-neutral-300 hover:border-neutral-500 text-neutral-600">
+        className="mt-1.5 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-outline-variant hover:border-outline text-on-surface-variant">
         <Plus size={11} /> Ajouter
       </button>
     </div>
@@ -1767,10 +1839,10 @@ function SortableBulletRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("border rounded-md p-1.5 group", focused ? "border-neutral-900" : "border-neutral-200")}
+      className={cn("border rounded-md p-1.5 group", focused ? "border-navy" : "border-outline-variant")}
     >
       <div className="flex items-start gap-1.5">
-        <button {...attributes} {...listeners} className="text-neutral-300 group-hover:text-neutral-600 cursor-grab touch-none mt-1">
+        <button {...attributes} {...listeners} className="text-on-surface-variant group-hover:text-on-surface-variant cursor-grab touch-none mt-1">
           <GripVertical size={13} />
         </button>
         <textarea
@@ -1780,7 +1852,7 @@ function SortableBulletRow({
           rows={2}
           className="flex-1 text-sm border-none focus:outline-none resize-y leading-snug bg-transparent"
         />
-        <button onClick={onRemove} className="text-neutral-300 group-hover:text-red-700 mt-1"><Trash2 size={13} /></button>
+        <button onClick={onRemove} className="text-on-surface-variant group-hover:text-on-error-container mt-1"><Trash2 size={13} /></button>
       </div>
       <div className="flex items-center justify-between pl-5 mt-0.5">
         <div className="flex gap-1">
@@ -1788,7 +1860,7 @@ function SortableBulletRow({
           <AIChip busy={aiBusy} onClick={() => onAI("Rends-le plus court (≤ 14 mots).")}>Court</AIChip>
           <AIChip busy={aiBusy} onClick={() => onAI("Renforce l'impact : verbe d'action en premier, résultat mesurable.")}>Impact</AIChip>
         </div>
-        <span className={cn("text-[10px] tabular-nums", tooLong ? "text-amber-700" : "text-neutral-400")}>
+        <span className={cn("text-[10px] tabular-nums", tooLong ? "text-secondary" : "text-on-surface-variant")}>
           {wordCount}m
         </span>
       </div>
@@ -1808,7 +1880,7 @@ function AIChip({ busy, onClick, children }: { busy: boolean; onClick: () => voi
       disabled={busy}
       className={cn(
         "inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border",
-        busy ? "bg-neutral-100 text-neutral-400 border-neutral-200" : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-neutral-400"
+        busy ? "bg-surface-container text-on-surface-variant border-outline-variant" : "bg-surface-container-low text-on-surface border-outline-variant hover:border-outline"
       )}
     >
       {busy ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
@@ -1840,8 +1912,8 @@ function ProjectListEditor({
     onChange(arrayMove(values, a, b));
   };
   return (
-    <div className="p-4 space-y-2 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">{label}</div>
+    <div className="p-4 space-y-2 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">{label}</div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           <div className="space-y-1.5">
@@ -1855,7 +1927,7 @@ function ProjectListEditor({
         </SortableContext>
       </DndContext>
       <button onClick={() => onChange([...values, { name: "", summary: "" }])}
-        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-neutral-300 hover:border-neutral-500 text-neutral-600">
+        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-dashed border-outline-variant hover:border-outline text-on-surface-variant">
         <Plus size={11} /> Ajouter
       </button>
     </div>
@@ -1866,12 +1938,12 @@ function SortableProjectRow({ id, project, onChange, onRemove }: { id: string; p
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   return (
-    <div ref={setNodeRef} style={style} className="border border-neutral-200 rounded-md p-2 space-y-1.5 group">
+    <div ref={setNodeRef} style={style} className="border border-outline-variant rounded-md p-2 space-y-1.5 group">
       <div className="flex items-center gap-1.5">
-        <button {...attributes} {...listeners} className="text-neutral-300 group-hover:text-neutral-600 cursor-grab touch-none"><GripVertical size={13} /></button>
+        <button {...attributes} {...listeners} className="text-on-surface-variant group-hover:text-on-surface-variant cursor-grab touch-none"><GripVertical size={13} /></button>
         <input type="text" value={project.name} onChange={(e) => onChange({ ...project, name: e.target.value })}
           placeholder="Nom" className="flex-1 text-sm font-medium border-none focus:outline-none bg-transparent" />
-        <button onClick={onRemove} className="text-neutral-300 group-hover:text-red-700"><Trash2 size={13} /></button>
+        <button onClick={onRemove} className="text-on-surface-variant group-hover:text-on-error-container"><Trash2 size={13} /></button>
       </div>
       <textarea value={project.summary} onChange={(e) => onChange({ ...project, summary: e.target.value })}
         rows={2} placeholder="Description courte"
@@ -1882,11 +1954,11 @@ function SortableProjectRow({ id, project, onChange, onRemove }: { id: string; p
 
 function ProjectEditor({ index, values, onChange }: { index: number; values: CVProject[]; onChange: (v: CVProject[]) => void }) {
   const p = values[index];
-  if (!p) return <div className="p-4 text-xs text-neutral-500">Projet introuvable</div>;
+  if (!p) return <div className="p-4 text-xs text-on-surface-variant">Projet introuvable</div>;
   const setAt = (patch: Partial<CVProject>) => onChange(values.map((x, j) => (j === index ? { ...x, ...patch } : x)));
   return (
-    <div className="p-4 space-y-2 border-b border-neutral-200">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-medium">Projet</div>
+    <div className="p-4 space-y-2 border-b border-outline-variant">
+      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant font-medium">Projet</div>
       <FieldInput value={p.name} onChange={(v) => setAt({ name: v })} placeholder="Nom" />
       <FieldTextarea value={p.summary} onChange={(v) => setAt({ summary: v })} rows={3} placeholder="Description" />
     </div>
@@ -1933,32 +2005,32 @@ function InspirationsModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-stretch justify-end" onClick={onClose}>
       <div
-        className="bg-white w-[680px] max-w-full h-full overflow-hidden flex flex-col shadow-2xl"
+        className="bg-surface-lowest w-[680px] max-w-full h-full overflow-hidden flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-3 border-b border-neutral-200 flex items-center gap-2">
-          <ImageIcon size={16} className="text-neutral-600" />
+        <div className="px-5 py-3 border-b border-outline-variant flex items-center gap-2">
+          <ImageIcon size={16} className="text-on-surface-variant" />
           <div className="font-semibold text-sm">Inspirations de design</div>
-          <span className="text-[11px] text-neutral-500">scraped depuis enhancv & novoresume · clone via Vision</span>
-          <button onClick={onClose} className="ml-auto text-neutral-400 hover:text-neutral-900" title="Fermer (Esc)">
+          <span className="text-[11px] text-on-surface-variant">scraped depuis enhancv & novoresume · clone via Vision</span>
+          <button onClick={onClose} className="ml-auto text-on-surface-variant hover:text-on-surface" title="Fermer (Esc)">
             <X size={16} />
           </button>
         </div>
 
         {previewStyle && (
-          <div className="px-5 py-3 border-b border-violet-200 bg-violet-50 flex items-center gap-3">
-            <Wand2 size={14} className="text-violet-700 shrink-0" />
-            <div className="flex-1 text-xs text-violet-900">
+          <div className="px-5 py-3 border-b border-tertiary bg-tertiary-container flex items-center gap-3">
+            <Wand2 size={14} className="text-tertiary shrink-0" />
+            <div className="flex-1 text-xs text-on-tertiary-container">
               <div className="font-semibold">Style détecté</div>
               <div>
                 Template <strong>{previewStyle.template}</strong> · Accent
                 <span
-                  className="inline-block w-2.5 h-2.5 rounded-full mx-1 align-middle border border-violet-300"
+                  className="inline-block w-2.5 h-2.5 rounded-full mx-1 align-middle border border-tertiary"
                   style={{ background: previewStyle.accent_color }}
                 />
                 {previewStyle.accent_color} · Police {previewStyle.font} · Densité {previewStyle.density?.toFixed(2)}
                 {previewStyle.notes && (
-                  <span className="block text-violet-700/80 mt-0.5">{previewStyle.notes}</span>
+                  <span className="block text-tertiary mt-0.5">{previewStyle.notes}</span>
                 )}
               </div>
             </div>
@@ -1970,13 +2042,13 @@ function InspirationsModal({
                 density: previewStyle.density,
                 photo_enabled: previewStyle.photo_enabled,
               } as Partial<CVStyle>)}
-              className="px-3 py-1.5 rounded-md bg-violet-700 text-white text-xs font-semibold hover:bg-violet-800"
+              className="px-3 py-1.5 rounded-md bg-tertiary text-white text-xs font-semibold hover:brightness-110"
             >
               Appliquer
             </button>
             <button
               onClick={() => setPreviewStyle(null)}
-              className="px-2 py-1.5 rounded-md border border-violet-300 text-violet-800 text-xs hover:bg-violet-100"
+              className="px-2 py-1.5 rounded-md border border-tertiary text-on-tertiary-container text-xs hover:bg-tertiary-container"
             >
               Reset
             </button>
@@ -1984,13 +2056,13 @@ function InspirationsModal({
         )}
 
         <div className="flex-1 overflow-auto p-4">
-          {error && <div className="text-xs text-red-700 mb-2">{error}</div>}
+          {error && <div className="text-xs text-on-error-container mb-2">{error}</div>}
           {items === null ? (
-            <div className="flex items-center justify-center gap-2 text-sm text-neutral-500 py-12">
+            <div className="flex items-center justify-center gap-2 text-sm text-on-surface-variant py-12">
               <Loader2 size={14} className="animate-spin" /> Chargement de la galerie…
             </div>
           ) : items.length === 0 ? (
-            <div className="text-sm text-neutral-500 text-center py-12">Pas d'inspirations disponibles.</div>
+            <div className="text-sm text-on-surface-variant text-center py-12">Pas d'inspirations disponibles.</div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
               {items.map((it) => {
@@ -1998,7 +2070,7 @@ function InspirationsModal({
                 return (
                   <div
                     key={it.url}
-                    className="relative group rounded-md overflow-hidden border border-neutral-200 bg-neutral-50"
+                    className="relative group rounded-md overflow-hidden border border-outline-variant bg-surface-container-low"
                   >
                     <img
                       src={it.url}
@@ -2014,8 +2086,8 @@ function InspirationsModal({
                         className={cn(
                           "text-[11px] font-medium px-2 py-1 rounded inline-flex items-center gap-1",
                           isBusy
-                            ? "bg-white/30 text-white cursor-not-allowed"
-                            : "bg-white text-neutral-900 hover:bg-neutral-100"
+                            ? "bg-surface-lowest text-white cursor-not-allowed"
+                            : "bg-surface-lowest text-on-surface hover:bg-surface-container"
                         )}
                       >
                         {isBusy ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
@@ -2028,7 +2100,7 @@ function InspirationsModal({
             </div>
           )}
         </div>
-        <div className="px-5 py-2 border-t border-neutral-200 text-[11px] text-neutral-500">
+        <div className="px-5 py-2 border-t border-outline-variant text-[11px] text-on-surface-variant">
           Le clone n'extrait que le style (template, couleur, police, densité). Le contenu de ton CV reste intact.
         </div>
       </div>

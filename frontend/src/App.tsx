@@ -2,12 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { ProgressBar } from "./components/ProgressBar";
 import { OffersView } from "./components/OffersView";
+import { FavoritesBoard } from "./components/FavoritesBoard";
+import { StatsView } from "./components/StatsView";
 import { CVsView } from "./components/CVsView";
 import { SettingsView } from "./components/SettingsView";
 import { EditorView } from "./components/EditorView";
 import {
   connectProgressWS,
   getProfile,
+  getSearchStats,
   getSearchStatus,
   startSearch,
   updateProfile,
@@ -21,6 +24,21 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingOfferId, setEditingOfferId] = useState<number | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">(
+    () => (localStorage.getItem("theme") as "light" | "dark") || "light"
+  );
+  const [overdueCount, setOverdueCount] = useState(0);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    getSearchStats()
+      .then((s) => setOverdueCount(s.overdue_count ?? 0))
+      .catch(() => undefined);
+  }, [refreshKey]);
 
   useEffect(() => {
     getProfile().then(setProfile).catch(console.error);
@@ -78,7 +96,7 @@ export default function App() {
   );
 
   return (
-    <div className="flex h-full bg-neutral-50 text-neutral-900">
+    <div className="flex h-full bg-background text-on-surface">
       <Sidebar
         view={view}
         onViewChange={setView}
@@ -86,6 +104,9 @@ export default function App() {
         onToggleSource={handleToggleSource}
         running={running}
         onStartSearch={handleStartSearch}
+        theme={theme}
+        onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        overdueCount={overdueCount}
       />
       <main className="flex-1 flex flex-col min-w-0">
         {editingOfferId !== null ? (
@@ -105,12 +126,12 @@ export default function App() {
                 />
               )}
               {view === "favorites" && (
-                <OffersView
-                  favoritesOnly={true}
+                <FavoritesBoard
                   refreshKey={refreshKey}
                   onEdit={setEditingOfferId}
                 />
               )}
+              {view === "stats" && <StatsView refreshKey={refreshKey} />}
               {view === "cvs" && <CVsView />}
               {view === "settings" && (
                 <SettingsView

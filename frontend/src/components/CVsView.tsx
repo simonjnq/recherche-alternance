@@ -91,7 +91,7 @@ export function CVsView() {
   return (
     <div className="p-6 max-w-4xl">
       <h1 className="text-xl font-semibold mb-1">Mes CVs</h1>
-      <p className="text-sm text-neutral-500 mb-6">
+      <p className="text-sm text-on-surface-variant mb-6">
         Dépose ici tes CVs (HTML, PDF ou image PNG/JPG). Les PDFs et images sont
         convertis en HTML via Claude. Le CV par défaut sera adapté à chaque
         offre.
@@ -108,19 +108,19 @@ export function CVsView() {
         className={cn(
           "border-2 border-dashed rounded-xl px-6 py-10 text-center cursor-pointer transition-colors",
           dragOver
-            ? "border-neutral-900 bg-neutral-100"
-            : "border-neutral-300 bg-white hover:border-neutral-400"
+            ? "border-navy bg-surface-container"
+            : "border-outline-variant bg-surface-lowest hover:border-outline"
         )}
       >
-        <div className="mx-auto w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center mb-3">
-          <Upload size={16} className="text-neutral-600" />
+        <div className="mx-auto w-10 h-10 rounded-full bg-surface-container flex items-center justify-center mb-3">
+          <Upload size={16} className="text-on-surface-variant" />
         </div>
-        <div className="text-sm font-medium text-neutral-900">
+        <div className="text-sm font-medium text-on-surface">
           {uploading
             ? "Upload en cours… (extraction Claude si PDF/image)"
             : "Glisse un CV ici ou clique"}
         </div>
-        <div className="text-xs text-neutral-500 mt-1">
+        <div className="text-xs text-on-surface-variant mt-1">
           Formats acceptés : .html, .pdf, .png, .jpg, .jpeg, .webp
         </div>
         <input
@@ -134,7 +134,7 @@ export function CVsView() {
       </div>
 
       {error && (
-        <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <div className="mt-3 text-sm text-on-error-container bg-error-container border border-error rounded-md px-3 py-2">
           {error}
         </div>
       )}
@@ -143,9 +143,9 @@ export function CVsView() {
         {cvs.map((cv) => (
           <div
             key={cv.id}
-            className="flex items-center gap-3 border border-neutral-200 bg-white rounded-lg p-3 hover:shadow-sm transition-shadow"
+            className="flex items-center gap-3 border border-outline-variant bg-surface-lowest rounded-lg p-3 hover:shadow-sm transition-shadow"
           >
-            <div className="w-9 h-9 rounded-md bg-neutral-100 flex items-center justify-center text-neutral-600">
+            <div className="w-9 h-9 rounded-md bg-surface-container flex items-center justify-center text-on-surface-variant">
               <FileText size={15} />
             </div>
             <div className="flex-1 min-w-0">
@@ -154,32 +154,32 @@ export function CVsView() {
                   {cv.filename}
                 </span>
                 {cv.is_default && (
-                  <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
+                  <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-secondary-container text-secondary">
                     <Check size={10} /> Par défaut
                   </span>
                 )}
               </div>
-              <div className="text-xs text-neutral-500 mt-0.5">
+              <div className="text-xs text-on-surface-variant mt-0.5">
                 {formatBytes(cv.size)} · {formatDate(cv.uploaded_at)}
               </div>
             </div>
             <button
               onClick={() => handlePreview(cv)}
-              className="text-sm text-neutral-600 hover:text-neutral-900 px-2 py-1"
+              className="text-sm text-on-surface-variant hover:text-on-surface px-2 py-1"
             >
               Aperçu
             </button>
             {!cv.is_default && (
               <button
                 onClick={() => handleSetDefault(cv)}
-                className="text-sm text-neutral-600 hover:text-neutral-900 px-2 py-1"
+                className="text-sm text-on-surface-variant hover:text-on-surface px-2 py-1"
               >
                 Définir par défaut
               </button>
             )}
             <button
               onClick={() => handleDelete(cv)}
-              className="p-1.5 text-neutral-400 hover:text-red-600"
+              className="p-1.5 text-on-surface-variant hover:text-error"
               aria-label="Supprimer"
             >
               <Trash2 size={14} />
@@ -194,14 +194,14 @@ export function CVsView() {
           onClick={() => setPreviewHtml(null)}
         >
           <div
-            className="bg-white rounded-xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-xl"
+            className="bg-surface-lowest rounded-xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-3 border-b border-neutral-200 flex items-center">
+            <div className="px-4 py-3 border-b border-outline-variant flex items-center">
               <span className="font-medium text-sm">{previewName}</span>
               <button
                 onClick={() => setPreviewHtml(null)}
-                className="ml-auto text-sm text-neutral-500 hover:text-neutral-900"
+                className="ml-auto text-sm text-on-surface-variant hover:text-on-surface"
               >
                 Fermer
               </button>
@@ -210,7 +210,7 @@ export function CVsView() {
               title="CV"
               srcDoc={previewHtml}
               sandbox=""
-              className="flex-1 w-full bg-neutral-50"
+              className="flex-1 w-full bg-surface-container-low"
             />
           </div>
         </div>

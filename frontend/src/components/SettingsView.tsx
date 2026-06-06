@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Upload, X } from "lucide-react";
 import {
   addLinkedIn,
+  backupUrl,
   deleteProfilePhoto,
   getProfile,
   getProfilePhotoUrl,
+  importBackup,
   updateProfile,
   uploadProfilePhoto,
 } from "../api";
@@ -49,7 +51,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
   }, [p]);
 
   if (!profile) {
-    return <div className="p-6 text-sm text-neutral-500">Chargement…</div>;
+    return <div className="p-6 text-sm text-on-surface-variant">Chargement…</div>;
   }
 
   const update = (patch: Partial<Profile>) =>
@@ -125,20 +127,20 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
   return (
     <div className="p-6 max-w-3xl">
       <h1 className="text-xl font-semibold mb-1">Paramètres</h1>
-      <p className="text-sm text-neutral-500 mb-6">
+      <p className="text-sm text-on-surface-variant mb-6">
         Personnalise ton profil et tes critères de recherche.
       </p>
 
       <section className="mb-8">
         <h2 className="font-medium mb-3">Profil</h2>
-        <div className="space-y-3 bg-white border border-neutral-200 rounded-xl p-4">
+        <div className="space-y-3 bg-surface-lowest border border-outline-variant rounded-xl p-4">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Nom">
               <input
                 type="text"
                 value={profile.name}
                 onChange={(e) => update({ name: e.target.value })}
-                className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+                className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
               />
             </Field>
             <Field label="Localisation">
@@ -146,7 +148,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                 type="text"
                 value={profile.location}
                 onChange={(e) => update({ location: e.target.value })}
-                className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+                className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
               />
             </Field>
             <Field label="Email">
@@ -155,7 +157,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                 value={profile.email ?? ""}
                 onChange={(e) => update({ email: e.target.value })}
                 placeholder="prenom.nom@email.fr"
-                className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+                className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
               />
             </Field>
             <Field label="Téléphone">
@@ -164,7 +166,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                 value={profile.phone ?? ""}
                 onChange={(e) => update({ phone: e.target.value })}
                 placeholder="+33 6 …"
-                className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+                className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
               />
             </Field>
           </div>
@@ -174,7 +176,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               value={profile.linkedin ?? ""}
               onChange={(e) => update({ linkedin: e.target.value })}
               placeholder="linkedin.com/in/handle"
-              className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+              className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
             />
           </Field>
           <Field label="Contrats recherchés (séparés par virgule)">
@@ -189,7 +191,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                     .filter(Boolean),
                 })
               }
-              className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+              className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
             />
           </Field>
         </div>
@@ -197,14 +199,14 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
 
       <section className="mb-8">
         <h2 className="font-medium mb-3">Voix de la lettre</h2>
-        <div className="space-y-3 bg-white border border-neutral-200 rounded-xl p-4">
+        <div className="space-y-3 bg-surface-lowest border border-outline-variant rounded-xl p-4">
           <Field label="Tagline / positionnement (1 phrase qui te résume)">
             <input
               type="text"
               value={profile.tagline ?? ""}
               onChange={(e) => update({ tagline: e.target.value })}
               placeholder="ex: Builder IA / no-code orienté growth & automatisation B2B"
-              className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+              className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
             />
           </Field>
           <Field label="Style d'écriture">
@@ -219,8 +221,8 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                     className={cn(
                       "px-3 py-1.5 rounded-md text-sm border",
                       active
-                        ? "bg-neutral-900 text-white border-neutral-900"
-                        : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400"
+                        ? "bg-navy text-white border-navy"
+                        : "bg-surface-lowest text-on-surface border-outline-variant hover:border-outline"
                     )}
                     title={s.hint}
                   >
@@ -229,7 +231,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                 );
               })}
             </div>
-            <div className="text-[11px] text-neutral-500 mt-1.5">
+            <div className="text-[11px] text-on-surface-variant mt-1.5">
               {LETTER_STYLES.find((s) => s.value === (profile.letter_style ?? "natural"))?.hint}
             </div>
           </Field>
@@ -246,7 +248,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               }
               rows={4}
               placeholder={"ex: Lancé un SaaS d'agents IA orchestrés (Supabase, n8n) en prod\nAutomatisé X processus avec Power Automate → 8h gagnées/semaine"}
-              className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5 resize-y leading-snug"
+              className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5 resize-y leading-snug"
             />
           </Field>
           <Field label="Tournures interdites (une par ligne — vide = liste par défaut)">
@@ -262,7 +264,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               }
               rows={3}
               placeholder={"je suis passionné\nc'est avec un vif intérêt\nje serais ravi d'échanger"}
-              className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-1.5 resize-y leading-snug"
+              className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5 resize-y leading-snug"
             />
           </Field>
         </div>
@@ -270,13 +272,13 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
 
       <section className="mb-8">
         <h2 className="font-medium mb-3">Photo CV</h2>
-        <div className="bg-white border border-neutral-200 rounded-xl p-4">
-          <p className="text-sm text-neutral-500 mb-3">
+        <div className="bg-surface-lowest border border-outline-variant rounded-xl p-4">
+          <p className="text-sm text-on-surface-variant mb-3">
             Optionnelle — intégrée dans le CV généré. PNG/JPG/WebP, 5 Mo max.
             Sans photo, les initiales de ton nom sont affichées.
           </p>
           <div className="flex items-center gap-4">
-            <div className="w-24 h-24 rounded-full border-2 border-[#2d52c4] bg-neutral-100 overflow-hidden flex items-center justify-center text-neutral-400 text-xs">
+            <div className="w-24 h-24 rounded-full border-2 border-[#2d52c4] bg-surface-container overflow-hidden flex items-center justify-center text-on-surface-variant text-xs">
               {photoExists ? (
                 <img
                   src={getProfilePhotoUrl(photoVersion)}
@@ -301,7 +303,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               <button
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-navy text-white hover:bg-[#1d2841]"
               >
                 <Upload size={14} />
                 {photoExists ? "Remplacer" : "Uploader une photo"}
@@ -310,7 +312,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                 <button
                   type="button"
                   onClick={handlePhotoDelete}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-red-700 hover:bg-red-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-on-error-container hover:bg-error-container"
                 >
                   <Trash2 size={14} />
                   Supprimer
@@ -319,14 +321,14 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
             </div>
           </div>
           {photoErr && (
-            <div className="mt-2 text-xs text-red-700">{photoErr}</div>
+            <div className="mt-2 text-xs text-on-error-container">{photoErr}</div>
           )}
         </div>
       </section>
 
       <section className="mb-8">
         <h2 className="font-medium mb-3">Mots-clés</h2>
-        <div className="space-y-4 bg-white border border-neutral-200 rounded-xl p-4">
+        <div className="space-y-4 bg-surface-lowest border border-outline-variant rounded-xl p-4">
           {Object.keys(profile.keywords).map((cat) => (
             <KeywordGroup
               key={cat}
@@ -341,7 +343,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
 
       <section className="mb-8">
         <h2 className="font-medium mb-3">Sources</h2>
-        <div className="space-y-1 bg-white border border-neutral-200 rounded-xl p-4">
+        <div className="space-y-1 bg-surface-lowest border border-outline-variant rounded-xl p-4">
           {SOURCES.map((s) => (
             <label
               key={s.key}
@@ -359,7 +361,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
                     },
                   })
                 }
-                className="h-3.5 w-3.5 accent-neutral-900"
+                className="h-3.5 w-3.5 accent-[var(--tertiary)]"
               />
             </label>
           ))}
@@ -367,8 +369,68 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
       </section>
 
       <section className="mb-8">
+        <h2 className="font-medium mb-3">Filtrage des offres</h2>
+        <div className="space-y-4 bg-surface-lowest border border-outline-variant rounded-xl p-4">
+          <p className="text-sm text-on-surface-variant">
+            Affine ce qui est gardé/écarté à chaque recherche (s'applique aux prochains runs).
+          </p>
+          <KeywordGroup
+            label="Entreprises bloquées (écoles/CFA…)"
+            values={profile.blocked_companies ?? []}
+            onAdd={(v) => update({ blocked_companies: [...(profile.blocked_companies ?? []), v] })}
+            onRemove={(i) => update({ blocked_companies: (profile.blocked_companies ?? []).filter((_, x) => x !== i) })}
+          />
+          <KeywordGroup
+            label="Mots « forts » en plus (garde l'offre si présent)"
+            values={profile.relevance_strong ?? []}
+            onAdd={(v) => update({ relevance_strong: [...(profile.relevance_strong ?? []), v] })}
+            onRemove={(i) => update({ relevance_strong: (profile.relevance_strong ?? []).filter((_, x) => x !== i) })}
+          />
+          <KeywordGroup
+            label="Mots à exclure (écarte l'offre si présent)"
+            values={profile.relevance_excluded ?? []}
+            onAdd={(v) => update({ relevance_excluded: [...(profile.relevance_excluded ?? []), v] })}
+            onRemove={(i) => update({ relevance_excluded: (profile.relevance_excluded ?? []).filter((_, x) => x !== i) })}
+          />
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="font-medium mb-3">Sauvegarde</h2>
+        <div className="bg-surface-lowest border border-outline-variant rounded-xl p-4 flex items-center gap-3 flex-wrap">
+          <p className="text-sm text-on-surface-variant flex-1 min-w-[180px]">
+            Exporte/restaure toutes tes offres, favoris, suivi et profil dans un fichier JSON.
+          </p>
+          <a href={backupUrl()} className="btn-secondary btn-sm">
+            <Upload size={14} className="rotate-180" /> Exporter
+          </a>
+          <label className="btn-secondary btn-sm cursor-pointer">
+            <Upload size={14} /> Importer
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                if (!confirm("Restaurer cette sauvegarde ? Cela REMPLACE les offres actuelles.")) return;
+                try {
+                  const json = JSON.parse(await f.text());
+                  const r = await importBackup(json);
+                  alert("Restauré : " + JSON.stringify(r.restored));
+                  location.reload();
+                } catch (err) {
+                  alert("Import impossible : " + (err instanceof Error ? err.message : err));
+                }
+              }}
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="mb-8">
         <h2 className="font-medium mb-3">Seuils</h2>
-        <div className="space-y-4 bg-white border border-neutral-200 rounded-xl p-4">
+        <div className="space-y-4 bg-surface-lowest border border-outline-variant rounded-xl p-4">
           <Field label={`Score mini pour générer CV+lettre : ${profile.score_threshold_generate}`}>
             <input
               type="range"
@@ -378,7 +440,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               onChange={(e) =>
                 update({ score_threshold_generate: Number(e.target.value) })
               }
-              className="w-full accent-neutral-900"
+              className="w-full accent-[var(--tertiary)]"
             />
           </Field>
           <Field label={`Offres max par source : ${profile.max_offers_per_source}`}>
@@ -391,16 +453,35 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               onChange={(e) =>
                 update({ max_offers_per_source: Number(e.target.value) })
               }
-              className="w-full accent-neutral-900"
+              className="w-full accent-[var(--tertiary)]"
             />
           </Field>
+
+          <label className="flex items-start gap-2.5 mt-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={profile.auto_generate ?? false}
+              onChange={(e) => update({ auto_generate: e.target.checked })}
+              className="mt-0.5 h-4 w-4 rounded-sm accent-[var(--tertiary)]"
+            />
+            <span>
+              <span className="text-body-md text-on-surface">
+                Générer CV + lettre automatiquement
+              </span>
+              <span className="block text-label-sm text-on-surface-variant">
+                Désactivé (recommandé) : la génération se fait à la demande depuis
+                chaque offre, pour économiser les crédits. Activé : génère
+                automatiquement toutes les offres ≥ seuil à chaque recherche.
+              </span>
+            </span>
+          </label>
         </div>
       </section>
 
       <section className="mb-8">
         <h2 className="font-medium mb-3">Ajouter une offre LinkedIn</h2>
-        <div className="bg-white border border-neutral-200 rounded-xl p-4">
-          <p className="text-sm text-neutral-500 mb-2">
+        <div className="bg-surface-lowest border border-outline-variant rounded-xl p-4">
+          <p className="text-sm text-on-surface-variant mb-2">
             LinkedIn bloque le scraping automatique. Colle ici l'URL d'une offre
             pour l'importer manuellement.
           </p>
@@ -410,7 +491,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               placeholder="https://www.linkedin.com/jobs/view/…"
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
-              className="flex-1 text-sm border border-neutral-200 rounded-md px-2.5 py-1.5"
+              className="flex-1 text-sm border border-outline-variant rounded-md px-2.5 py-1.5"
             />
             <button
               onClick={handleAddLinkedin}
@@ -418,34 +499,34 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               className={cn(
                 "px-3 py-1.5 rounded-md text-sm font-medium",
                 linkedinUrl.trim()
-                  ? "bg-neutral-900 text-white hover:bg-neutral-800"
-                  : "bg-neutral-200 text-neutral-500 cursor-not-allowed"
+                  ? "bg-navy text-white hover:bg-[#1d2841]"
+                  : "bg-surface-highest text-on-surface-variant cursor-not-allowed"
               )}
             >
               Importer
             </button>
           </div>
           {linkedinMsg && (
-            <div className="mt-2 text-xs text-neutral-600">{linkedinMsg}</div>
+            <div className="mt-2 text-xs text-on-surface-variant">{linkedinMsg}</div>
           )}
         </div>
       </section>
 
-      <div className="flex items-center gap-3 sticky bottom-0 bg-neutral-50 py-3 -mx-6 px-6 border-t border-neutral-200">
+      <div className="flex items-center gap-3 sticky bottom-0 bg-surface-container-low py-3 -mx-6 px-6 border-t border-outline-variant">
         <button
           onClick={handleSave}
           disabled={saving}
           className={cn(
             "px-4 py-2 rounded-md text-sm font-medium",
             saving
-              ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
-              : "bg-neutral-900 text-white hover:bg-neutral-800"
+              ? "bg-surface-highest text-on-surface-variant cursor-not-allowed"
+              : "bg-navy text-white hover:bg-[#1d2841]"
           )}
         >
           {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
         {saved && (
-          <span className="text-sm text-emerald-700">Enregistré ✓</span>
+          <span className="text-sm text-secondary">Enregistré ✓</span>
         )}
       </div>
     </div>
@@ -461,7 +542,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <div className="text-xs text-neutral-600 mb-1">{label}</div>
+      <div className="text-xs text-on-surface-variant mb-1">{label}</div>
       {children}
     </label>
   );
@@ -481,17 +562,17 @@ function KeywordGroup({
   const [input, setInput] = useState("");
   return (
     <div>
-      <div className="text-xs text-neutral-600 mb-1.5">{label}</div>
+      <div className="text-xs text-on-surface-variant mb-1.5">{label}</div>
       <div className="flex flex-wrap gap-1.5 mb-1.5">
         {values.map((v, i) => (
           <span
             key={`${v}-${i}`}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-neutral-100 text-sm"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container text-sm"
           >
             {v}
             <button
               onClick={() => onRemove(i)}
-              className="text-neutral-400 hover:text-neutral-900"
+              className="text-on-surface-variant hover:text-on-surface"
               aria-label="Retirer"
             >
               <X size={11} />
@@ -511,7 +592,7 @@ function KeywordGroup({
             }
           }}
           placeholder="Ajouter un mot-clé…"
-          className="flex-1 text-sm border border-neutral-200 rounded-md px-2.5 py-1"
+          className="flex-1 text-sm border border-outline-variant rounded-md px-2.5 py-1"
         />
         <button
           onClick={() => {
@@ -520,7 +601,7 @@ function KeywordGroup({
               setInput("");
             }
           }}
-          className="px-2 py-1 rounded-md text-sm text-neutral-600 hover:bg-neutral-100 inline-flex items-center gap-1"
+          className="px-2 py-1 rounded-md text-sm text-on-surface-variant hover:bg-surface-container inline-flex items-center gap-1"
         >
           <Plus size={12} /> Ajouter
         </button>

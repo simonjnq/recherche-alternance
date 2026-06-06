@@ -5,6 +5,9 @@ import {
   Settings,
   Star,
   Loader2,
+  Moon,
+  Sun,
+  BarChart3,
 } from "lucide-react";
 import type { Profile, Source, ViewKey } from "../types";
 import { SOURCES } from "../types";
@@ -17,11 +20,15 @@ interface Props {
   onToggleSource: (s: Source, enabled: boolean) => void;
   running: boolean;
   onStartSearch: () => void;
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
+  overdueCount?: number;
 }
 
 const NAV: { key: ViewKey; label: string; icon: typeof Briefcase }[] = [
   { key: "offers", label: "Offres", icon: Briefcase },
   { key: "favorites", label: "Favoris", icon: Star },
+  { key: "stats", label: "Stats", icon: BarChart3 },
   { key: "cvs", label: "CVs", icon: FileText },
   { key: "settings", label: "Paramètres", icon: Settings },
 ];
@@ -33,59 +40,78 @@ export function Sidebar({
   onToggleSource,
   running,
   onStartSearch,
+  theme,
+  onToggleTheme,
+  overdueCount = 0,
 }: Props) {
   return (
-    <aside className="w-[260px] shrink-0 border-r border-neutral-200 bg-gradient-to-b from-white to-neutral-50 flex flex-col">
-      <div className="h-14 px-5 flex items-center border-b border-neutral-200">
-        <div className="w-7 h-7 rounded-md bg-gradient-to-br from-neutral-900 to-neutral-700 flex items-center justify-center mr-2.5 shadow-sm">
-          <Search size={14} className="text-white" />
+    <aside className="w-[260px] shrink-0 border-r border-outline-variant bg-surface-container-low flex flex-col">
+      <div className="h-16 px-5 flex items-center border-b border-outline-variant">
+        <div className="w-8 h-8 rounded bg-navy flex items-center justify-center mr-2.5 shadow-soft">
+          <Search size={15} className="text-on-primary" />
         </div>
-        <span className="font-semibold text-[15px] tracking-tight">Recherche Alternance</span>
+        <span className="text-label-md text-on-surface tracking-tight">
+          Recherche Alternance
+        </span>
+        <button
+          onClick={onToggleTheme}
+          className="ml-auto p-1.5 rounded text-on-surface-variant hover:bg-surface-c hover:text-on-surface"
+          title={theme === "dark" ? "Passer en clair" : "Passer en sombre"}
+          aria-label="Basculer le thème"
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
 
       <nav className="p-3">
-        <div className="px-2 pb-1.5 text-[11px] uppercase tracking-wide text-neutral-500 font-medium">
-          Navigation
+        <div className="section-label px-2 pb-2">Navigation</div>
+        <div className="space-y-0.5">
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            const active = view === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => onViewChange(item.key)}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-body-md transition-colors",
+                  active
+                    ? "bg-surface-container-highest text-navy font-semibold"
+                    : "text-on-surface-variant hover:bg-surface-c hover:text-on-surface"
+                )}
+              >
+                <Icon size={16} className={active ? "text-tertiary" : ""} />
+                {item.label}
+                {item.key === "favorites" && overdueCount > 0 && (
+                  <span
+                    className="ml-auto badge badge-error"
+                    title={`${overdueCount} relance(s) en retard`}
+                  >
+                    {overdueCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        {NAV.map((item) => {
-          const Icon = item.icon;
-          const active = view === item.key;
-          return (
-            <button
-              key={item.key}
-              onClick={() => onViewChange(item.key)}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors",
-                active
-                  ? "bg-neutral-100 text-neutral-900 font-medium"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-              )}
-            >
-              <Icon size={15} />
-              {item.label}
-            </button>
-          );
-        })}
       </nav>
 
       <div className="px-3 pb-3">
-        <div className="px-2 pt-3 pb-1.5 text-[11px] uppercase tracking-wide text-neutral-500 font-medium">
-          Sources
-        </div>
+        <div className="section-label px-2 pt-3 pb-2">Sources</div>
         <div className="space-y-0.5">
           {SOURCES.map((s) => {
             const enabled = profile?.sources_enabled[s.key] ?? true;
             return (
               <label
                 key={s.key}
-                className="flex items-center justify-between px-2.5 py-1.5 rounded-md text-sm hover:bg-neutral-50 cursor-pointer"
+                className="flex items-center justify-between px-2.5 py-1.5 rounded text-body-md text-on-surface-variant hover:bg-surface-c cursor-pointer"
               >
-                <span className="text-neutral-700">{s.label}</span>
+                <span>{s.label}</span>
                 <input
                   type="checkbox"
                   checked={enabled}
                   onChange={(e) => onToggleSource(s.key, e.target.checked)}
-                  className="h-3.5 w-3.5 accent-neutral-900"
+                  className="h-4 w-4 rounded-sm accent-[var(--tertiary)]"
                 />
               </label>
             );
@@ -93,25 +119,35 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="mt-auto p-3 border-t border-neutral-200">
+      <div className="mt-auto p-3 border-t border-outline-variant">
+        {profile &&
+          (() => {
+            const auto = ["la_bonne_alternance", "indeed", "wttj", "hellowork", "apec", "linkedin"];
+            const n = auto.filter((s) => profile.sources_enabled[s as Source]).length;
+            const cap = profile.max_offers_per_source || 60;
+            const scoring = n * cap * 0.008;
+            const gen = profile.auto_generate ? cap * 0.07 : 0; // approx si auto-génération
+            const est = scoring + gen;
+            return (
+              <p className="text-label-sm text-on-surface-variant mb-2 text-center">
+                ~{est.toFixed(1)} € / recherche{" "}
+                <span className="opacity-70">(1er passage, scoring{profile.auto_generate ? " + génération" : ""})</span>
+              </p>
+            );
+          })()}
         <button
           onClick={onStartSearch}
           disabled={running}
-          className={cn(
-            "w-full h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm",
-            running
-              ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
-              : "bg-gradient-to-br from-neutral-900 to-neutral-700 text-white hover:from-neutral-800 hover:to-neutral-600 hover:shadow-md active:scale-[0.98]"
-          )}
+          className="btn-primary w-full"
         >
           {running ? (
             <>
-              <Loader2 size={15} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin" />
               Recherche en cours…
             </>
           ) : (
             <>
-              <Search size={15} />
+              <Search size={16} />
               Lancer la recherche
             </>
           )}

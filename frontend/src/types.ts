@@ -23,11 +23,40 @@ export interface Offer {
   red_flags: string[];
   is_favorite: boolean;
   is_hidden: boolean;
+  application_status?: ApplicationStatus | null;
+  applied_at?: string | null;
+  follow_up_at?: string | null;
+  notes?: string | null;
+  contact?: string | null;
+  checklist?: Record<string, boolean> | null;
+  board_order?: number | null;
+  seen?: boolean;
+  has_docs?: boolean;
   first_run_id?: number | null;
   is_new?: boolean;
+  posted_at?: string | null;
   scraped_at?: string | null;
   scored_at?: string | null;
 }
+
+export type ApplicationStatus =
+  | "to_apply"
+  | "applied"
+  | "interview"
+  | "accepted"
+  | "rejected";
+
+export const APPLICATION_STATUSES: {
+  key: ApplicationStatus;
+  label: string;
+  dot: string; // classe de couleur du point/entête de colonne
+}[] = [
+  { key: "to_apply", label: "À postuler", dot: "bg-on-surface-variant" },
+  { key: "applied", label: "Postulé", dot: "bg-tertiary" },
+  { key: "interview", label: "Entretien", dot: "bg-navy" },
+  { key: "accepted", label: "Retenu", dot: "bg-secondary" },
+  { key: "rejected", label: "Non retenu", dot: "bg-error" },
+];
 
 export interface GeneratedDocLite {
   id: number;
@@ -76,6 +105,10 @@ export interface Profile {
   sources_enabled: Record<Source, boolean>;
   score_threshold_generate: number;
   max_offers_per_source: number;
+  auto_generate?: boolean;
+  blocked_companies?: string[];
+  relevance_strong?: string[];
+  relevance_excluded?: string[];
 }
 
 export type ProgressStage =
@@ -169,7 +202,7 @@ export interface CVEditable {
   style: CVStyle;
 }
 
-export type ViewKey = "offers" | "favorites" | "cvs" | "settings";
+export type ViewKey = "offers" | "favorites" | "stats" | "cvs" | "settings";
 
 export const SOURCES: { key: Source; label: string }[] = [
   { key: "la_bonne_alternance", label: "La Bonne Alternance" },

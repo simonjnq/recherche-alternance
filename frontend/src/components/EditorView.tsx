@@ -46,19 +46,19 @@ export function EditorView({ offerId, onBack }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center gap-3 px-5 py-3 border-b border-neutral-200 bg-white">
+      <header className="flex items-center gap-3 px-5 py-3 border-b border-outline-variant bg-surface-lowest">
         <button
           onClick={onBack}
-          className="p-1 text-neutral-500 hover:text-neutral-900"
+          className="p-1 text-on-surface-variant hover:text-on-surface"
           aria-label="Retour"
         >
           <ArrowLeft size={16} />
         </button>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm truncate">{title}</div>
-          <div className="text-xs text-neutral-500 truncate">{subtitle}</div>
+          <div className="text-xs text-on-surface-variant truncate">{subtitle}</div>
         </div>
-        <div className="flex gap-1 bg-neutral-100 rounded-md p-0.5">
+        <div className="flex gap-1 bg-surface-container rounded-md p-0.5">
           <TabBtn active={tab === "cv"} onClick={() => setTab("cv")}>
             CV
           </TabBtn>
@@ -76,7 +76,7 @@ export function EditorView({ offerId, onBack }: Props) {
             <LetterEditor offerId={offerId} />
           )
         ) : (
-          <div className="p-6 text-sm text-neutral-500">Chargement…</div>
+          <div className="p-6 text-sm text-on-surface-variant">Chargement…</div>
         )}
       </div>
     </div>
@@ -98,8 +98,8 @@ function TabBtn({
       className={cn(
         "px-3 py-1 text-xs font-medium rounded",
         active
-          ? "bg-white text-neutral-900 shadow-sm"
-          : "text-neutral-600 hover:text-neutral-900"
+          ? "bg-surface-lowest text-on-surface shadow-sm"
+          : "text-on-surface-variant hover:text-on-surface"
       )}
     >
       {children}
@@ -180,14 +180,14 @@ function LetterEditor({ offerId }: { offerId: number }) {
 
   if (markdown === null || !editor) {
     return (
-      <div className="p-6 text-sm text-neutral-500">Chargement de la lettre…</div>
+      <div className="p-6 text-sm text-on-surface-variant">Chargement de la lettre…</div>
     );
   }
 
   return (
     <div className="flex h-full">
-      <div className="flex-1 min-w-0 flex flex-col border-r border-neutral-200 bg-neutral-50">
-        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-neutral-200 bg-white">
+      <div className="flex-1 min-w-0 flex flex-col border-r border-outline-variant bg-surface-container-low">
+        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-outline-variant bg-surface-lowest">
           <ToolbarBtn
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive("bold")}
@@ -209,7 +209,7 @@ function LetterEditor({ offerId }: { offerId: number }) {
           >
             <Strikethrough size={13} />
           </ToolbarBtn>
-          <div className="w-px h-4 bg-neutral-200 mx-1" />
+          <div className="w-px h-4 bg-surface-highest mx-1" />
           <ToolbarBtn
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive("bulletList")}
@@ -226,15 +226,15 @@ function LetterEditor({ offerId }: { offerId: number }) {
           </ToolbarBtn>
           <a
             href={downloadLetterPdfUrl(offerId)}
-            className="ml-auto text-xs px-2 py-1 rounded-md border border-neutral-200 hover:border-neutral-400 bg-white inline-flex items-center gap-1"
+            className="ml-auto text-xs px-2 py-1 rounded-md border border-outline-variant hover:border-outline bg-surface-lowest inline-flex items-center gap-1"
             target="_blank"
             rel="noreferrer"
           >
             <Download size={12} /> PDF
           </a>
         </div>
-        <div className="flex-1 overflow-auto p-8 bg-neutral-50">
-          <div className="max-w-[720px] mx-auto bg-white shadow-sm rounded-md p-10 min-h-[80vh]">
+        <div className="flex-1 overflow-auto p-8 bg-surface-container-low">
+          <div className="max-w-[720px] mx-auto bg-surface-lowest shadow-sm rounded-md p-10 min-h-[80vh]">
             <EditorContent
               editor={editor}
               className="prose-sm max-w-none focus:outline-none [&_p]:my-2 [&_h1]:text-xl [&_h2]:text-base [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
@@ -243,16 +243,16 @@ function LetterEditor({ offerId }: { offerId: number }) {
         </div>
       </div>
 
-      <aside className="w-[340px] shrink-0 flex flex-col bg-white">
-        <div className="p-4 border-b border-neutral-200">
-          <label className="text-xs font-medium text-neutral-600 mb-1.5 inline-flex items-center gap-1.5">
+      <aside className="w-[340px] shrink-0 flex flex-col bg-surface-lowest">
+        <div className="p-4 border-b border-outline-variant">
+          <label className="text-xs font-medium text-on-surface-variant mb-1.5 inline-flex items-center gap-1.5">
             <Sparkles size={12} /> Instructions pour l'IA
           </label>
           <textarea
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             placeholder="ex: rends la lettre plus courte et plus directe, ajoute une phrase sur mes valeurs…"
-            className="w-full text-sm border border-neutral-200 rounded-md px-2.5 py-2 h-32 resize-none focus:border-neutral-400 outline-none"
+            className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-2 h-32 resize-none focus:border-tertiary outline-none"
           />
           <button
             onClick={handleApply}
@@ -260,8 +260,8 @@ function LetterEditor({ offerId }: { offerId: number }) {
             className={cn(
               "mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium",
               applying || !instruction.trim()
-                ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
-                : "bg-neutral-900 text-white hover:bg-neutral-800"
+                ? "bg-surface-highest text-on-surface-variant cursor-not-allowed"
+                : "bg-navy text-white hover:bg-[#1d2841]"
             )}
           >
             {applying ? (
@@ -272,8 +272,8 @@ function LetterEditor({ offerId }: { offerId: number }) {
             {applying ? "L'IA réfléchit…" : "Appliquer avec l'IA"}
           </button>
         </div>
-        <div className="p-4 border-b border-neutral-200">
-          <div className="text-xs font-medium text-neutral-600 mb-1.5">Raccourcis</div>
+        <div className="p-4 border-b border-outline-variant">
+          <div className="text-xs font-medium text-on-surface-variant mb-1.5">Raccourcis</div>
           <div className="flex flex-wrap gap-1.5">
             <QuickBtn onClick={() => setInstruction("Rends la lettre plus courte (~250 mots) sans rien perdre de concret.")}>Plus court</QuickBtn>
             <QuickBtn onClick={() => setInstruction("Rends-la plus directe : phrases plus brèves, moins de connecteurs, aucun superlatif.")}>Plus direct</QuickBtn>
@@ -287,12 +287,12 @@ function LetterEditor({ offerId }: { offerId: number }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-navy bg-navy text-white hover:bg-[#1d2841] disabled:opacity-60"
           >
             <Save size={13} /> {saving ? "…" : "Enregistrer"}
           </button>
           {status && (
-            <span className="text-xs text-neutral-600">{status}</span>
+            <span className="text-xs text-on-surface-variant">{status}</span>
           )}
         </div>
       </aside>
@@ -305,7 +305,7 @@ function QuickBtn({ onClick, children }: { onClick: () => void; children: React.
     <button
       type="button"
       onClick={onClick}
-      className="px-2.5 py-1 rounded-md text-xs font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-200"
+      className="px-2.5 py-1 rounded-md text-xs font-medium bg-surface-container text-on-surface hover:bg-surface-highest border border-outline-variant"
     >
       {children}
     </button>
@@ -329,8 +329,8 @@ function ToolbarBtn({
       aria-label={label}
       title={label}
       className={cn(
-        "p-1.5 rounded text-neutral-600 hover:bg-neutral-100",
-        active && "bg-neutral-200 text-neutral-900"
+        "p-1.5 rounded text-on-surface-variant hover:bg-surface-container",
+        active && "bg-surface-highest text-on-surface"
       )}
     >
       {children}

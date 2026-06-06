@@ -1,4 +1,5 @@
 import type {
+  ApplicationStatus,
   CV,
   CVEditable,
   CVStructured,
@@ -57,7 +58,29 @@ export interface ListOffersParams {
   source?: Source | "";
   search?: string;
   new_only?: boolean;
+  sort?: "score" | "recent" | "company";
+  generated?: boolean;
+  contract?: string;
+  location?: string;
+  days_max?: number;
   limit?: number;
+}
+
+export function reorderOffers(orderedIds: number[]): Promise<void> {
+  return request<void>("/offers/reorder", {
+    method: "POST",
+    body: JSON.stringify({ ordered_ids: orderedIds }),
+  });
+}
+
+export function cleanupOffers(
+  mode: "old" | "unscored",
+  days = 30
+): Promise<{ ok: boolean; hidden: number }> {
+  return request<{ ok: boolean; hidden: number }>("/offers/cleanup", {
+    method: "POST",
+    params: { mode, days },
+  });
 }
 
 export function listOffers(params: ListOffersParams = {}): Promise<Offer[]> {
@@ -79,8 +102,44 @@ export function hideOffer(id: number): Promise<void> {
   return request<void>(`/offers/${id}/hide`, { method: "POST" });
 }
 
+export function unhideOffer(id: number): Promise<void> {
+  return request<void>(`/offers/${id}/unhide`, { method: "POST" });
+}
+
+export function setOfferStatus(
+  id: number,
+  value: ApplicationStatus
+): Promise<void> {
+  return request<void>(`/offers/${id}/status`, {
+    method: "POST",
+    params: { value },
+  });
+}
+
+export interface OfferTracking {
+  applied_at?: string | null;
+  follow_up_at?: string | null;
+  notes?: string | null;
+  contact?: string | null;
+  checklist?: Record<string, boolean>;
+}
+
+export function updateOfferTracking(
+  id: number,
+  fields: OfferTracking
+): Promise<void> {
+  return request<void>(`/offers/${id}/tracking`, {
+    method: "POST",
+    body: JSON.stringify(fields),
+  });
+}
+
 export function generateOffer(id: number): Promise<void> {
   return request<void>(`/offers/${id}/generate`, { method: "POST" });
+}
+
+export function exportCsvUrl(favoritesOnly = true): string {
+  return `${API_BASE}/offers/export.csv?favorites_only=${favoritesOnly ? "true" : "false"}`;
 }
 
 export function downloadCVUrl(id: number): string {
@@ -269,6 +328,20 @@ export function getCVContent(
   );
 }
 
+export function backupUrl(): string {
+  return `${API_BASE}/backup`;
+}
+
+export async function importBackup(json: unknown): Promise<{ ok: boolean; restored: Record<string, number> }> {
+  const res = await fetch(`${API_BASE}/backup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(json),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return (await res.json()) as { ok: boolean; restored: Record<string, number> };
+}
+
 export function getProfile(): Promise<Profile> {
   return request<Profile>("/profile");
 }
@@ -330,6 +403,7 @@ export interface SearchStats {
   high_score: number;
   generated: number;
   new_count: number;
+  overdue_count: number;
   by_source: { source: string; count: number; avg_score: number }[];
   last_run: {
     started_at: string;
@@ -341,6 +415,14 @@ export interface SearchStats {
 
 export function getSearchStats(): Promise<SearchStats> {
   return request<SearchStats>("/search/stats");
+}
+
+export function getTimeline(
+  days = 21
+): Promise<{ days: { day: string; count: number }[] }> {
+  return request<{ days: { day: string; count: number }[] }>("/search/timeline", {
+    params: { days },
+  });
 }
 
 export function addLinkedIn(
