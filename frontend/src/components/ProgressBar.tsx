@@ -31,14 +31,14 @@ export function ProgressBar({ progress, running }: Props) {
   return (
     <div
       className={cn(
-        "border-b border-neutral-200",
-        isError ? "bg-red-50" : isDone ? "bg-emerald-50" : "bg-neutral-50"
+        "border-b border-outline-variant",
+        isError ? "bg-error-container" : isDone ? "bg-secondary-container" : "bg-surface-container-low"
       )}
     >
       <div
         className={cn(
-          "px-6 py-2.5 flex items-center gap-3 text-[13px]",
-          isError ? "text-red-800" : isDone ? "text-emerald-800" : "text-neutral-700"
+          "px-6 py-2.5 flex items-center gap-3 text-body-md text-[13px]",
+          isError ? "text-on-error-container" : isDone ? "text-on-secondary-container" : "text-on-surface-variant"
         )}
       >
         {running && !isDone && !isError ? (
@@ -48,22 +48,22 @@ export function ProgressBar({ progress, running }: Props) {
         ) : (
           <CheckCircle2 size={14} className="shrink-0" />
         )}
-        <span className="font-medium">{STAGE_LABEL[progress.stage]}</span>
+        <span className="font-semibold">{STAGE_LABEL[progress.stage]}</span>
         {!isScraping && progress.source && (
-          <span className="text-neutral-500">· {progress.source}</span>
+          <span className="opacity-70">· {progress.source}</span>
         )}
         {pct !== null && !isDone && !isError && (
-          <span className="text-neutral-500">
+          <span className="opacity-70">
             · {progress.current} / {progress.total}
           </span>
         )}
-        <span className="truncate text-neutral-600 flex-1">
+        <span className="truncate flex-1 opacity-90">
           {progress.message && <>· {progress.message}</>}
         </span>
         {pct !== null && !isDone && !isError && (
-          <div className="w-40 h-1.5 bg-neutral-200 rounded-full overflow-hidden shrink-0">
+          <div className="w-40 h-1.5 bg-surface-highest rounded-full overflow-hidden shrink-0">
             <div
-              className="h-full bg-neutral-900 transition-all"
+              className="h-full bg-tertiary transition-all"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -84,18 +84,15 @@ function SourceChip({ sp }: { sp: SourceProgress }) {
   const label = SOURCE_LABEL[sp.source as keyof typeof SOURCE_LABEL] ?? sp.source;
   const tone =
     sp.state === "done"
-      ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+      ? "badge-success"
       : sp.state === "error"
-        ? "bg-red-100 text-red-800 border-red-200"
+        ? "badge-error"
         : sp.state === "running"
-          ? "bg-neutral-900 text-white border-neutral-900"
-          : "bg-neutral-100 text-neutral-500 border-neutral-200";
+          ? "bg-navy text-on-primary"
+          : "badge-neutral";
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border",
-        tone
-      )}
+      className={cn("badge", tone)}
       title={sp.error ?? sp.last_title ?? ""}
     >
       {sp.state === "running" ? (
