@@ -1,0 +1,35 @@
+{
+  "name": "Prénom Nom",
+  "email": "prenom.nom@email.com",
+  "phone": "06 00 00 00 00",
+  "linkedin": "linkedin.com/in/ton-handle",
+  "location": "Paris",
+  "contract_types": ["alternance", "apprentissage"],
+  "tagline": "Une phrase de positionnement qui te résume",
+  "signature_achievements": [
+    "Réalisation marquante #1 (avec un chiffre si possible)",
+    "Réalisation marquante #2"
+  ],
+  "letter_style": "natural",
+  "forbidden_phrases": [],
+  "keywords": {
+    "domaine_1": ["mot-clé", "autre mot-clé"],
+    "domaine_2": ["..."],
+    "combos": ["mot-clé + ville", "intitulé de poste type"]
+  },
+  "sources_enabled": {
+    "la_bonne_alternance": true,
+    "indeed": true,
+    "wttj": true,
+    "hellowork": true,
+    "apec": true,
+    "linkedin": true,
+    "linkedin_manual": true
+  },
+  "score_threshold_generate": 70,
+  "max_offers_per_source": 60,
+  "auto_generate": false,
+  "blocked_companies": ["ISCOD", "ICADEMIE", "ISEFAC"],
+  "relevance_strong": [],
+  "relevance_excluded": []
+}
