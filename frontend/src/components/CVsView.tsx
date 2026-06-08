@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, FileText, Trash2, Upload } from "lucide-react";
-import {
-  deleteCV,
-  getCVContent,
-  listCVs,
-  setDefaultCV,
-  uploadCV,
-} from "../api";
+import { FileText, Trash2, Upload } from "lucide-react";
+import { deleteCV, getCVContent, listCVs, uploadCV } from "../api";
 import type { CV } from "../types";
 import { cn, formatBytes, formatDate } from "../lib/utils";
 
@@ -83,18 +77,14 @@ export function CVsView() {
     reload();
   };
 
-  const handleSetDefault = async (cv: CV) => {
-    await setDefaultCV(cv.id);
-    reload();
-  };
-
   return (
     <div className="p-6 max-w-4xl">
       <h1 className="text-xl font-semibold mb-1">Mes CVs</h1>
       <p className="text-sm text-on-surface-variant mb-6">
         Dépose ici tes CVs (HTML, PDF ou image PNG/JPG). Les PDFs et images sont
-        convertis en HTML via Claude. Le CV par défaut sera adapté à chaque
-        offre.
+        convertis en HTML via Claude. <strong>Tous tes CV sont pris en compte</strong> :
+        leurs expériences sont fusionnées pour adapter au mieux chaque candidature
+        (le plus récent sert de modèle visuel).
       </p>
 
       <div
@@ -149,16 +139,9 @@ export function CVsView() {
               <FileText size={15} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate">
-                  {cv.filename}
-                </span>
-                {cv.is_default && (
-                  <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-secondary-container text-secondary">
-                    <Check size={10} /> Par défaut
-                  </span>
-                )}
-              </div>
+              <span className="font-medium text-sm truncate block">
+                {cv.filename}
+              </span>
               <div className="text-xs text-on-surface-variant mt-0.5">
                 {formatBytes(cv.size)} · {formatDate(cv.uploaded_at)}
               </div>
@@ -169,14 +152,6 @@ export function CVsView() {
             >
               Aperçu
             </button>
-            {!cv.is_default && (
-              <button
-                onClick={() => handleSetDefault(cv)}
-                className="text-sm text-on-surface-variant hover:text-on-surface px-2 py-1"
-              >
-                Définir par défaut
-              </button>
-            )}
             <button
               onClick={() => handleDelete(cv)}
               className="p-1.5 text-on-surface-variant hover:text-error"

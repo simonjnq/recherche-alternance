@@ -83,6 +83,84 @@ async def ensure_structured_profile(db: Any, cv: Any) -> dict[str, Any]:
     return structured
 
 
+async def ensure_combined_profile(db: Any) -> tuple[dict[str, Any] | None, str | None, int | None]:
+    """Profil structuré agrégé de TOUS les CV (pas de notion de défaut).
+
+    Renvoie (profil_combiné, html_modèle, id_modèle) où html_modèle est le CV le
+    plus récent (sert d'appui visuel). Chaque CV est extrait une fois (caché).
+    """
+    from .. import db as dbm  # local import
+    cvs = await dbm.list_cvs(db)
+    if not cvs:
+        return None, None, None
+    profiles: list[dict[str, Any]] = []
+    for cv in cvs:
+        try:
+            profiles.append(await ensure_structured_profile(db, cv))
+        except Exception as e:
+            logger.warning("Profil CV %s non extrait (%s)", cv.id, e)
+    combined = _merge_profiles(profiles) if profiles else None
+    style = cvs[0]  # list_cvs est trié par date décroissante → le plus récent
+    return combined, style.html_content, style.id
+
+
+def _merge_profiles(profiles: list[dict[str, Any]]) -> dict[str, Any]:
+    """Fusionne plusieurs profils structurés en un seul (union dédupliquée)."""
+    out = _empty()
+    seen_exp: set = set()
+    seen_form: set = set()
+    seen_proj: set = set()
+    skill_seen = {"hard_skills": set(), "soft_skills": set(), "tools": set()}
+    ach_seen: set = set()
+    lang_seen: set = set()
+    for p in profiles:
+        if not isinstance(p, dict):
+            continue
+        out["name"] = out["name"] or p.get("name")
+        c = p.get("contact") or {}
+        for k in ("email", "phone", "linkedin", "location"):
+            if not out["contact"].get(k):
+                out["contact"][k] = c.get(k)
+        out["intro"] = out["intro"] or p.get("intro")
+        for e in p.get("experiences") or []:
+            key = (str(e.get("company", "")).lower().strip(),
+                   str(e.get("role", "")).lower().strip(),
+                   str(e.get("period", "")).strip())
+            if key in seen_exp:
+                continue
+            seen_exp.add(key)
+            out["experiences"].append(e)
+        for f in p.get("formations") or []:
+            key = (str(f.get("degree", "")).lower(), str(f.get("school", "")).lower(),
+                   str(f.get("period", "")))
+            if key in seen_form:
+                continue
+            seen_form.add(key)
+            out["formations"].append(f)
+        for pr in p.get("projects") or []:
+            key = str(pr.get("name", "")).lower().strip()
+            if key and key in seen_proj:
+                continue
+            seen_proj.add(key)
+            out["projects"].append(pr)
+        for sk in ("hard_skills", "soft_skills", "tools"):
+            for s in p.get(sk) or []:
+                low = s.lower()
+                if low not in skill_seen[sk]:
+                    skill_seen[sk].add(low)
+                    out[sk].append(s)
+        for a in p.get("achievements") or []:
+            if a.lower() not in ach_seen:
+                ach_seen.add(a.lower())
+                out["achievements"].append(a)
+        for l in p.get("languages") or []:
+            n = str(l.get("name") or "").strip()
+            if n and n.lower() not in lang_seen:
+                lang_seen.add(n.lower())
+                out["languages"].append(l)
+    return out
+
+
 async def extract_profile(cv_html: str) -> dict[str, Any]:
     """Renvoie le profil structuré. Lève l'exception en cas d'échec JSON."""
     user = f"""CV à structurer :

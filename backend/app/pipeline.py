@@ -16,7 +16,7 @@ from .contract_filter import is_alternance
 from .relevance import is_relevant
 from .llm.cv_adapter import adapt_cv
 from .llm.cv_fit import fit_cv_html
-from .llm.cv_profile import ensure_structured_profile, profile_to_text
+from .llm.cv_profile import ensure_combined_profile, profile_to_text
 from .llm.letter import generate_letter
 from .llm.scoring import score_offer
 from .models import GeneratedDocs, Offer, OfferRaw, SearchRunProgress, SourceProgress
@@ -276,23 +276,23 @@ async def _run_search_inner() -> None:
             else:
                 top.append(o)
         top.sort(key=lambda o: o.score, reverse=True)
-        default_cv = await dbm.get_default_cv(db)
 
-        if not default_cv:
-            logger.warning("Pas de CV par défaut, génération skippée")
+        # Profil agrégé de TOUS les CV (source de vérité) + un CV modèle (style visuel).
+        try:
+            combined, style_html, style_cv_id = await ensure_combined_profile(db)
+        except Exception as e:
+            logger.warning("Profil combiné indisponible (%s)", e)
+            combined, style_html, style_cv_id = None, None, None
+
+        if not style_html:
+            logger.warning("Aucun CV, génération skippée")
             await STATE.emit(SearchRunProgress(
-                stage="done", message=f"Terminé — pas de CV (upload d'abord). {len(scored_offers)} offres analysées.",
+                stage="done", message=f"Terminé — aucun CV (upload d'abord). {len(scored_offers)} offres analysées.",
             ))
             await _finish_run(db, run_id, {"scraped": len(raw_offers), "new": len(new_offer_ids), "dropped_non_alt": dropped_non_alt, "dropped_irrelevant": dropped_irrelevant, "scored": len(scored_offers), "generated": 0})
             return
 
-        # Profil structuré du CV — une seule extraction LLM par run, partagée.
-        try:
-            structured = await ensure_structured_profile(db, default_cv)
-            structured_text = profile_to_text(structured) if structured else None
-        except Exception as e:
-            logger.warning("Profil structuré indisponible (%s) — fallback HTML brut", e)
-            structured_text = None
+        structured_text = profile_to_text(combined) if combined else None
 
         await STATE.emit(SearchRunProgress(
             stage="generating", total=len(top), message="Génération CV + lettres",
@@ -302,10 +302,10 @@ async def _run_search_inner() -> None:
         async def generate_one(i: int, offer: Offer) -> None:
             async with gen_sem:
                 try:
-                    cv_html = await adapt_cv(default_cv.html_content, offer, profile_text=structured_text)
+                    cv_html = await adapt_cv(style_html, offer, profile_text=structured_text)
                     cv_html = await fit_cv_html(cv_html)
                     letter_md = await generate_letter(
-                        offer, default_cv.html_content, profile, profile_text=structured_text,
+                        offer, style_html, profile, profile_text=structured_text,
                     )
                     folder = OFFERS_DIR / offer.slug()
                     folder.mkdir(parents=True, exist_ok=True)
@@ -320,7 +320,7 @@ async def _run_search_inner() -> None:
                     gdb = await dbm.connect()
                     try:
                         await dbm.add_generated(gdb, GeneratedDocs(
-                            offer_id=offer.id or 0, cv_id=default_cv.id or 0,
+                            offer_id=offer.id or 0, cv_id=style_cv_id or 0,
                             adapted_cv_path=str(cv_path), letter_path=str(letter_path),
                         ))
                     finally:
@@ -380,19 +380,15 @@ async def regenerate_for_offer(offer_id: int) -> Optional[Path]:
         offer = await dbm.get_offer(db, offer_id)
         if not offer:
             return None
-        cv = await dbm.get_default_cv(db)
-        if not cv:
-            raise RuntimeError("Pas de CV par défaut. Upload d'abord un CV.")
-        try:
-            structured = await ensure_structured_profile(db, cv)
-            structured_text = profile_to_text(structured) if structured else None
-        except Exception as e:
-            logger.warning("Profil structuré indisponible (%s)", e)
-            structured_text = None
-        cv_html = await adapt_cv(cv.html_content, offer, profile_text=structured_text)
+        # Profil agrégé de TOUS les CV + CV modèle (style). Pas de CV "par défaut".
+        combined, style_html, style_cv_id = await ensure_combined_profile(db)
+        if not style_html:
+            raise RuntimeError("Aucun CV. Upload d'abord un CV.")
+        structured_text = profile_to_text(combined) if combined else None
+        cv_html = await adapt_cv(style_html, offer, profile_text=structured_text)
         cv_html = await fit_cv_html(cv_html)
         letter_md = await generate_letter(
-            offer, cv.html_content, profile, profile_text=structured_text,
+            offer, style_html, profile, profile_text=structured_text,
         )
         folder = OFFERS_DIR / offer.slug()
         folder.mkdir(parents=True, exist_ok=True)
@@ -402,7 +398,7 @@ async def regenerate_for_offer(offer_id: int) -> Optional[Path]:
         (folder / "cv.html").write_text(cv_html)
         (folder / "letter.md").write_text(letter_md)
         await dbm.add_generated(db, GeneratedDocs(
-            offer_id=offer.id or 0, cv_id=cv.id or 0,
+            offer_id=offer.id or 0, cv_id=style_cv_id or 0,
             adapted_cv_path=str(folder / "cv.html"), letter_path=str(folder / "letter.md"),
         ))
         return folder

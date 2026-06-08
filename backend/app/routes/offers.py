@@ -601,13 +601,12 @@ async def ai_global(offer_id: int, payload: dict = Body(...)) -> dict:
     if not instruction:
         raise HTTPException(400, "Champ 'instruction' manquant")
 
+    from ..llm.cv_profile import ensure_combined_profile
     db = await dbm.connect()
     try:
         offer = await dbm.get_offer(db, offer_id)
-        default_cv = await dbm.get_default_cv(db)
-        source_struct = None
-        if default_cv:
-            source_struct = await dbm.get_cv_structured(db, default_cv.id or 0)
+        # Profil source = agrégat de TOUS les CV (plus de CV par défaut)
+        source_struct, _style_html, _style_id = await ensure_combined_profile(db)
     finally:
         await db.close()
     if not offer:
