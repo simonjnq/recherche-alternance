@@ -9,7 +9,34 @@ from pathlib import Path
 from typing import Any
 
 from ..models import Offer
-from .client import cached_system, complete
+from .client import cached_system, complete, complete_json
+
+HAIKU = "claude-haiku-4-5-20251001"
+
+ANALYZE_SYSTEM = """Tu es un recruteur expérimenté en alternance. On te donne une offre.
+Identifie ce qui compte VRAIMENT pour départager les candidats sur CE poste précis.
+
+Réponds en JSON strict :
+{
+  "priorities": ["3 critères/compétences réellement décisifs, concrets"],
+  "company_angle": "un élément SPÉCIFIQUE de l'offre (produit, mission, contexte, techno) sur lequel un candidat peut accrocher de façon crédible",
+  "proof_wanted": "le type de preuve qui convaincrait le plus (ex: 'avoir déjà mis un agent IA en production')",
+  "avoid": ["1-2 clichés ou angles à éviter pour ce poste"]
+}"""
+
+
+async def _analyze_offer(offer: Offer) -> dict[str, Any]:
+    """Agent 1 (recruteur) : dégage les vraies priorités de l'offre. Cheap (Haiku)."""
+    user = f"""Offre :
+Titre : {offer.title}
+Entreprise : {offer.company or 'n/c'}
+Compétences : {', '.join(offer.skills[:10]) if offer.skills else 'n/c'}
+
+Description :
+{offer.description[:3500]}
+
+Renvoie UNIQUEMENT le JSON."""
+    return await complete_json(system=ANALYZE_SYSTEM, user=user, max_tokens=600, model=HAIKU)
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +248,29 @@ async def generate_letter(
 
     addressee = _addressee(offer)
 
+    # Agent 1 — analyse recruteur (injectée dans la rédaction, jamais citée telle quelle)
+    analysis_block = ""
+    try:
+        a = await _analyze_offer(offer)
+        bits: list[str] = []
+        prio = a.get("priorities") or []
+        if prio:
+            bits.append("Priorités du recruteur : " + " ; ".join(str(p) for p in prio[:3]))
+        if a.get("company_angle"):
+            bits.append("Accroche concrète possible : " + str(a["company_angle"]))
+        if a.get("proof_wanted"):
+            bits.append("Preuve qui convainc le plus : " + str(a["proof_wanted"]))
+        avoid = a.get("avoid") or []
+        if avoid:
+            bits.append("À éviter : " + " ; ".join(str(x) for x in avoid[:2]))
+        if bits:
+            analysis_block = (
+                "ANALYSE RECRUTEUR (exploite-la pour cibler la lettre, mais ne la cite "
+                "ni ne la paraphrase littéralement) :\n" + "\n".join(bits)
+            )
+    except Exception as e:
+        logger.warning("Analyse offre (lettre) indisponible : %s", e)
+
     extras = "\n".join(extra_user_bits) if extra_user_bits else ""
     skills_line = ", ".join(offer.skills[:8]) if offer.skills else "non extraites"
     if profile_text:
@@ -237,6 +287,8 @@ async def generate_letter(
 - Entreprise : {offer.company or 'inconnue (omettre les mentions de nom)'}
 - Localisation offre : {offer.location or 'non précisée'}
 - Compétences clés de l'offre : {skills_line}
+
+{analysis_block}
 
 {extras}
 

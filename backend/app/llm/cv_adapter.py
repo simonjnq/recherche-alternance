@@ -346,7 +346,29 @@ Produis la version HTML du CV adaptée à cette offre, en suivant strictement le
         if result.lower().startswith("html"):
             result = result[4:]
         result = result.rsplit("```", 1)[0].strip()
+
+    # Garde-fou : ne JAMAIS livrer un CV resté sur les placeholders du template
+    # (arrive si le profil source est vide / extraction LLM ratée).
+    _assert_real_cv(result)
     return inject_profile_photo(result)
+
+
+_PLACEHOLDER_MARKERS = ("Prénom Nom", "email@exemple.fr")
+
+
+def _assert_real_cv(html: str) -> None:
+    """Lève si le CV produit est un placeholder (template non rempli) ou quasi vide."""
+    for marker in _PLACEHOLDER_MARKERS:
+        if marker in html:
+            raise ValueError(
+                "CV adapté non rempli (placeholder du template encore présent) — "
+                "profil source insuffisant. Vérifie qu'un CV exploitable est uploadé."
+            )
+    visible = re.sub(r"<(style|script|head)[^>]*>.*?</\1>", " ", html, flags=re.IGNORECASE | re.DOTALL)
+    visible = re.sub(r"<[^>]+>", " ", visible)
+    visible = re.sub(r"\s+", " ", visible).strip()
+    if len(visible) < 250:
+        raise ValueError(f"CV adapté trop court ({len(visible)} car.) — génération invalide.")
 
 
 PHOTO_DIV_RE = re.compile(r'(<div\s+class="photo"[^>]*?)(\s*/?>)(.*?)(</div>)', re.IGNORECASE | re.DOTALL)

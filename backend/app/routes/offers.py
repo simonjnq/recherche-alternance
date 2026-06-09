@@ -249,7 +249,11 @@ async def set_status(offer_id: int, value: Optional[str] = None) -> dict:
 
 @router.post("/{offer_id}/generate")
 async def generate(offer_id: int) -> dict:
-    folder = await regenerate_for_offer(offer_id)
+    try:
+        folder = await regenerate_for_offer(offer_id)
+    except (ValueError, RuntimeError) as e:
+        # CV vide / profil insuffisant → message clair, pas de doc cassé enregistré
+        raise HTTPException(422, str(e)) from e
     if folder is None:
         raise HTTPException(404, "Offre introuvable")
     return {"ok": True, "folder": str(folder)}
