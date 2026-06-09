@@ -44,10 +44,26 @@ Règles :
 - Pas de balises HTML dans les valeurs textuelles."""
 
 
+def _strip_for_extraction(html: str) -> str:
+    """Retire le CSS / head / scripts / styles inline pour ne garder que la
+    structure + le texte. Sinon le contenu réel (nom, expériences) se retrouve
+    au-delà de la troncature et le LLM ne voit que du CSS → JSON vide."""
+    s = re.sub(r"<head[^>]*>.*?</head>", " ", html, flags=re.IGNORECASE | re.DOTALL)
+    s = re.sub(r"<style[^>]*>.*?</style>", " ", s, flags=re.IGNORECASE | re.DOTALL)
+    s = re.sub(r"<script[^>]*>.*?</script>", " ", s, flags=re.IGNORECASE | re.DOTALL)
+    s = re.sub(r"<!--.*?-->", " ", s, flags=re.DOTALL)
+    s = re.sub(r'\sstyle="[^"]*"', "", s)          # attributs style inline (volumineux)
+    s = re.sub(r"\sclass=\"[^\"]*\"", "", s)         # classes (inutiles pour l'extraction)
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"\n\s*\n+", "\n", s)
+    return s.strip()
+
+
 async def extract_editable(cv_html: str) -> dict[str, Any]:
+    content = _strip_for_extraction(cv_html)
     user = f"""CV HTML à structurer :
 
-{cv_html[:18000]}
+{content[:18000]}
 
 Renvoie UNIQUEMENT le JSON conforme."""
     data = await complete_json(

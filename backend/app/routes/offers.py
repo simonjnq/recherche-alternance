@@ -375,9 +375,17 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
 
 
+def _structured_is_empty(s: Optional[dict[str, Any]]) -> bool:
+    """Un éditable « vide » = ni nom ni expériences (extraction ratée ou CV placeholder)."""
+    if not isinstance(s, dict):
+        return True
+    return not (s.get("name") or s.get("experiences"))
+
+
 @router.get("/{offer_id}/cv/editable")
 async def get_editable(offer_id: int) -> dict:
-    """Renvoie le modèle éditable + le style courant. Si absent, l'extrait du HTML existant."""
+    """Renvoie le modèle éditable + le style. L'extrait du HTML si absent OU si le
+    cache est vide (auto-réparation des extractions précédemment ratées)."""
     docs, _ = await _require_docs(offer_id)
     cv_path = Path(docs.adapted_cv_path)
     if not cv_path.exists():
@@ -388,16 +396,20 @@ async def get_editable(offer_id: int) -> dict:
 
     structured = _read_json(struct_path)
     style = _read_json(style_path)
-    if structured is None:
+
+    if _structured_is_empty(structured):
         cv_html = cv_path.read_text()
         try:
-            structured = await extract_editable(cv_html)
+            extracted = await extract_editable(cv_html)
         except Exception as e:
             raise HTTPException(500, f"Extraction éditable échouée : {e}") from e
+        structured = extracted
+        # On ne CACHE QUE si l'extraction a donné du contenu (évite de figer du vide).
+        if not _structured_is_empty(extracted):
+            _write_json(struct_path, extracted)
         if style is None:
             style = detect_style(cv_html)
-        _write_json(struct_path, structured)
-        _write_json(style_path, style)
+            _write_json(style_path, style)
     elif style is None:
         style = detect_style(cv_path.read_text())
         _write_json(style_path, style)
