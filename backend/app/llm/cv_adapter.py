@@ -262,9 +262,9 @@ SYSTEM_RULES = """RÈGLES DE FORMAT (impératives)
 - Structure 2 colonnes : sidebar 68mm à gauche, main flex:1 à droite.
 
 CAPS DURS DE CONTENU (à NE PAS dépasser — sinon le CV déborde)
-- Hard Skills : 8 max, chacun ≤ 22 caractères (UN concept par tag : "n8n", "RAG", "LLM Ops", PAS "Automatisation n8n / Zapier / Make"). Coupe en plusieurs tags si besoin.
-- Soft Skills : 3 max, mots simples.
-- Stack & Outils : 8-12 mots-clés courts, séparés par virgule.
+- Hard Skills : affiche TOUTES les compétences techniques pertinentes pour l'offre présentes dans le profil (PAS de limite de nombre). Chacune ≤ 22 caractères, UN concept par tag ("n8n", "RAG", "LLM Ops", PAS "Automatisation n8n / Zapier / Make"). Coupe en plusieurs tags si besoin.
+- Soft Skills : tous les soft skills pertinents (reste concis, mots simples).
+- Stack & Outils : tous les outils pertinents, mots-clés courts séparés par virgule.
 - Langues : 3 max.
 - Formations : 1-2 max.
 - Expériences : 3 max (4 si le candidat n'a que ça). Garde les plus pertinentes pour l'offre.

@@ -298,9 +298,9 @@ def _chunked(lst: list[str], n: int) -> list[list[str]]:
 # est borné pour préserver la lisibilité A4). L'utilisateur peut réordonner
 # dans l'éditeur pour promouvoir les items importants au-dessus de la coupe.
 RENDER_LIMITS = {
-    "hard_skills": 8,
-    "soft_skills": 4,
-    "tools": 12,
+    "hard_skills": 99,   # pas de limite d'affichage des compétences
+    "soft_skills": 99,
+    "tools": 99,
     "languages": 4,
     "experiences": 4,
     "bullets_per_exp": 3,
@@ -872,7 +872,7 @@ def _render_minimal_1col(structured: dict[str, Any], s: dict[str, Any]) -> str:
     # Bottom grid : Skills (hard + tools mergés) / Langues / Formation
     hard = structured.get("hard_skills") or []
     tools = structured.get("tools") or []
-    skills_combined = list(dict.fromkeys(hard[: RENDER_LIMITS["hard_skills"]] + tools[: 6]))
+    skills_combined = list(dict.fromkeys(hard[: RENDER_LIMITS["hard_skills"]] + tools[: RENDER_LIMITS["tools"]]))
     skills_inline = " · ".join(_esc(_shorten_skill(x)) for x in skills_combined)
 
     languages = structured.get("languages") or []

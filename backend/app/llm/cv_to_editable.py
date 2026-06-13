@@ -90,9 +90,9 @@ def _normalize(data: Any) -> dict[str, Any]:
             "location": _str_or_none(contact.get("location")),
         }
     out["intro"] = _str_or_none(data.get("intro"))
-    out["hard_skills"] = _list_of_str(data.get("hard_skills"))[:8]
-    out["soft_skills"] = _list_of_str(data.get("soft_skills"))[:5]
-    out["tools"] = _list_of_str(data.get("tools"))[:12]
+    out["hard_skills"] = _list_of_str(data.get("hard_skills"))
+    out["soft_skills"] = _list_of_str(data.get("soft_skills"))
+    out["tools"] = _list_of_str(data.get("tools"))
     out["languages"] = _list_of_objs(data.get("languages"), {"name": "", "level": None})
     out["formations"] = _list_of_objs(data.get("formations"), {"degree": "", "school": "", "period": ""})
     out["experiences"] = _list_of_objs(data.get("experiences"), {
