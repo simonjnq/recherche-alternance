@@ -182,3 +182,14 @@ def clean_offer_title(title: str) -> str:
     # garder uniquement la 1ʳᵉ ligne significative
     lines = [l.strip() for l in title.replace("\r", "\n").split("\n") if l.strip()]
     return lines[0] if lines else title.strip()
+
+
+def strip_long_dashes(text: str) -> str:
+    """Retire les tirets longs (— em, – en) que le LLM remet malgré les consignes.
+    En prose ' — ' devient ', ' ; un tiret accolé (ex. dates 2024–2026) devient '-'."""
+    if not text:
+        return text
+    t = re.sub(r"\s+[—–]\s+", ", ", text)   # « mot — mot » → « mot, mot »
+    t = t.replace("—", "-").replace("–", "-")  # restants (dates, accolés)
+    t = re.sub(r",\s*,", ",", t)
+    return t

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 
+from ..text_clean import strip_long_dashes
 from .client import complete
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ Produis la nouvelle version HTML du CV."""
         max_tokens=8000,
         temperature=0.3,
     )
-    return _strip_fence(result, "html")
+    return strip_long_dashes(_strip_fence(result, "html"))
 
 
 async def apply_instructions_to_letter(letter_md: str, instruction: str) -> str:
@@ -80,7 +81,7 @@ Produis la nouvelle version markdown de la lettre."""
         max_tokens=3000,
         temperature=0.4,
     )
-    return _strip_fence(result, "markdown")
+    return strip_long_dashes(_strip_fence(result, "markdown"))
 
 
 def _strip_fence(text: str, lang_hint: str) -> str:

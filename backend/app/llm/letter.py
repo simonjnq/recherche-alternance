@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..models import Offer
+from ..text_clean import strip_long_dashes
 from .client import cached_system, complete, complete_json
 
 HAIKU = "claude-haiku-4-5-20251001"
@@ -164,7 +165,9 @@ Structure attendue (Markdown) :
 [Date au format : Ville, le 14 mai 2026]
 
 À l'attention de [destinataire fourni dans le brief]
-Objet : Candidature — [Titre du poste exact] en alternance
+Objet : Candidature au poste de [Titre du poste exact] en alternance
+
+Madame, Monsieur,
 
 [Para 1] Accroche — PREMIÈRE PHRASE percutante, sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" sont INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'offre (une mission citée, le produit, le secteur, une techno nommée) en réutilisant le vocabulaire exact de l'annonce. Montre que tu as lu CETTE offre, pas une autre. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
 
@@ -180,7 +183,8 @@ RÈGLES IMPÉRATIVES
 - Une seule IDÉE par paragraphe. Phrases courtes. Voix active.
 - CONCRET > générique : chaque phrase doit pouvoir être fausse pour un autre candidat ou une autre boîte. Si une phrase marcherait pour n'importe qui, supprime-la.
 - Réutilise les mots-clés/missions exacts de l'offre (effet miroir), sans copier-coller de paragraphes entiers.
-- Jamais de "Madame, Monsieur" (la formule d'appel est déjà dans "À l'attention de").
+- Commence le corps par la formule d'appel « Madame, Monsieur, » (sur sa propre ligne, avant le paragraphe 1).
+- N'utilise JAMAIS de tiret long (— em ou – en), nulle part : remplace par une virgule ou « : ».
 - Jamais de placeholder entre crochets dans le rendu final : si une info manque (entreprise inconnue, email/téléphone absent), OMETS la ligne ou reformule neutre. Aucune mention "[entreprise]", "[Startup IA]", "[à compléter]".
 - N'invente JAMAIS de fait, chiffre, outil ou expérience absent du CV/profil ou de l'offre. Pas de chiffre inventé : n'utilise que ceux présents dans le profil.
 - Pas d'emojis, pas de listes à puces dans les paragraphes.
@@ -369,6 +373,7 @@ def _post_clean(md: str, forbidden: list[str]) -> str:
             return ""
         return m.group(0)
     out = PLACEHOLDER_RE.sub(_strip_ph, out)
+    out = strip_long_dashes(out)  # l'utilisateur ne veut aucun tiret long
     # Resserre les espaces résiduels
     out = re.sub(r"[ \t]{2,}", " ", out)
     out = re.sub(r"\n{3,}", "\n\n", out).strip()

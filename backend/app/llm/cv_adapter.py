@@ -11,6 +11,7 @@ import re
 
 from ..config import get_profile_photo_data_url
 from ..models import Offer
+from ..text_clean import strip_long_dashes
 from .client import cached_system, complete
 
 logger = logging.getLogger(__name__)
@@ -360,6 +361,7 @@ Produis la version HTML du CV adaptée à cette offre, en suivant strictement le
     # Garde-fou : ne JAMAIS livrer un CV resté sur les placeholders du template
     # (arrive si le profil source est vide / extraction LLM ratée).
     _assert_real_cv(result)
+    result = strip_long_dashes(result)
     return inject_profile_photo(result)
 
 
