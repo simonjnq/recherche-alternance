@@ -16,7 +16,7 @@ from ..llm.cv_profile import profile_to_text
 from ..llm.cv_to_editable import detect_style, extract_editable
 from ..llm.doc_editor import apply_instructions_to_cv, apply_instructions_to_letter
 from ..llm.client import complete, complete_json
-from ..pipeline import regenerate_for_offer
+from ..pipeline import regenerate_for_offer, regenerate_doc
 from ..render_pdf import html_to_pdf
 
 logger = logging.getLogger(__name__)
@@ -315,30 +315,30 @@ async def get_review(offer_id: int) -> dict:
     return {"review": review}
 
 
-@router.post("/{offer_id}/regenerate-with-review")
-async def regenerate_with_review(offer_id: int) -> dict:
-    """Régénère CV+lettre en intégrant le dernier retour recruteur, puis ré-évalue."""
-    from ..llm.recruiter import (
-        recruiter_review, review_to_cv_notes, review_to_letter_notes, html_to_text,
+@router.post("/{offer_id}/regenerate-doc")
+async def regenerate_doc_route(offer_id: int, payload: dict = Body(...)) -> dict:
+    """Régénère UN document (CV ou lettre) avec uniquement les suggestions cochées,
+    puis ré-évalue. payload : {target: 'cv'|'letter', suggestions: [...]}"""
+    from ..llm.recruiter import recruiter_review, html_to_text
+    target = (payload.get("target") or "").strip()
+    if target not in ("cv", "letter"):
+        raise HTTPException(400, "target doit être 'cv' ou 'letter'")
+    suggestions = [str(s).strip() for s in (payload.get("suggestions") or []) if str(s).strip()]
+    notes = (
+        "RETOUR RECRUTEUR à corriger en priorité (et uniquement ces points) :\n- "
+        + "\n- ".join(suggestions)
+        if suggestions else ""
     )
-    docs, _ = await _require_docs(offer_id)
-    review = _read_json(_review_path(Path(docs.adapted_cv_path)))
-    if not review:
-        raise HTTPException(400, "Aucun avis recruteur à intégrer. Lance d'abord l'avis.")
     try:
-        folder = await regenerate_for_offer(
-            offer_id,
-            cv_notes=review_to_cv_notes(review),
-            letter_notes=review_to_letter_notes(review),
-        )
+        folder = await regenerate_doc(offer_id, target, notes)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(422, str(e)) from e
     if folder is None:
         raise HTTPException(404, "Offre introuvable")
-    # Ré-évaluation après amélioration
-    docs2, offer = await _require_docs(offer_id)
-    cv_path = Path(docs2.adapted_cv_path)
-    letter_path = Path(docs2.letter_path)
+    # Ré-évaluation après correction du document
+    docs, offer = await _require_docs(offer_id)
+    cv_path = Path(docs.adapted_cv_path)
+    letter_path = Path(docs.letter_path)
     new_review = await recruiter_review(
         offer, html_to_text(cv_path.read_text()),
         letter_path.read_text() if letter_path.exists() else "",

@@ -23,7 +23,7 @@ import {
   getOffer,
   getReview,
   putGeneratedLetter,
-  regenerateWithReview,
+  regenerateDoc,
   reviewOffer,
   type RecruiterReview,
 } from "../api";
@@ -43,14 +43,28 @@ export function EditorView({ offerId, onBack }: Props) {
   const [tab, setTab] = useState<Tab>("cv");
   const [review, setReview] = useState<RecruiterReview | null>(null);
   const [reviewing, setReviewing] = useState(false);
-  const [improving, setImproving] = useState(false);
+  const [improving, setImproving] = useState<"cv" | "letter" | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0); // force le remontage des éditeurs après régé
+  const [checkedCv, setCheckedCv] = useState<Set<number>>(new Set());
+  const [checkedLetter, setCheckedLetter] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     getOffer(offerId).then(setData).catch((e) => console.error(e));
     getReview(offerId).then((r) => setReview(r.review)).catch(() => undefined);
   }, [offerId]);
+
+  // Réinitialise les cases quand un nouvel avis arrive
+  useEffect(() => {
+    setCheckedCv(new Set());
+    setCheckedLetter(new Set());
+  }, [review]);
+
+  const toggle = (set: Set<number>, setter: (s: Set<number>) => void, i: number) => {
+    const next = new Set(set);
+    next.has(i) ? next.delete(i) : next.add(i);
+    setter(next);
+  };
 
   const runReview = async () => {
     setReviewing(true);
@@ -64,16 +78,24 @@ export function EditorView({ offerId, onBack }: Props) {
     }
   };
 
-  const improveWithReview = async () => {
-    setImproving(true);
+  const improveDoc = async (target: "cv" | "letter") => {
+    if (!review) return;
+    const list = target === "cv" ? review.cv_suggestions : review.letter_suggestions;
+    const checked = target === "cv" ? checkedCv : checkedLetter;
+    const suggestions = list.filter((_, i) => checked.has(i));
+    if (suggestions.length === 0) {
+      alert("Coche au moins une correction à appliquer.");
+      return;
+    }
+    setImproving(target);
     try {
-      const r = await regenerateWithReview(offerId);
+      const r = await regenerateDoc(offerId, target, suggestions);
       setReview(r.review);
-      setReloadKey((k) => k + 1); // recharge CV + lettre régénérés
+      setReloadKey((k) => k + 1); // recharge le document régénéré
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
-      setImproving(false);
+      setImproving(null);
     }
   };
 
@@ -160,27 +182,74 @@ export function EditorView({ offerId, onBack }: Props) {
             )}
             {review.strengths.length > 0 && <RevList title="Points forts" items={review.strengths} tone="ok" />}
             {review.weaknesses.length > 0 && <RevList title="Faiblesses" items={review.weaknesses} tone="bad" />}
-            {(review.cv_suggestions.length > 0 || review.letter_suggestions.length > 0) && (
-              <RevList
-                title="À améliorer"
-                items={[
-                  ...review.cv_suggestions.map((s) => `CV — ${s}`),
-                  ...review.letter_suggestions.map((s) => `Lettre — ${s}`),
-                ]}
-                tone="info"
-              />
-            )}
-            <div className="flex gap-2 mt-3">
-              <button onClick={runReview} disabled={reviewing} className="btn-secondary btn-sm flex-1">
-                {reviewing ? <RefreshCw size={13} className="animate-spin" /> : <UserCheck size={13} />} Ré-évaluer
-              </button>
-              <button onClick={improveWithReview} disabled={improving} className="btn-primary btn-sm flex-1" title="Régénère CV + lettre en corrigeant les points, puis ré-évalue">
-                {improving ? <RefreshCw size={13} className="animate-spin" /> : <RefreshCw size={13} />} Régénérer
-              </button>
-            </div>
+
+            <SuggestionGroup
+              title="Corrections CV"
+              items={review.cv_suggestions}
+              checked={checkedCv}
+              onToggle={(i) => toggle(checkedCv, setCheckedCv, i)}
+              onApply={() => improveDoc("cv")}
+              applying={improving === "cv"}
+              applyLabel="Régénérer le CV"
+            />
+            <SuggestionGroup
+              title="Corrections lettre"
+              items={review.letter_suggestions}
+              checked={checkedLetter}
+              onToggle={(i) => toggle(checkedLetter, setCheckedLetter, i)}
+              onApply={() => improveDoc("letter")}
+              applying={improving === "letter"}
+              applyLabel="Régénérer la lettre"
+            />
+
+            <button onClick={runReview} disabled={reviewing} className="btn-secondary btn-sm w-full mt-3">
+              {reviewing ? <RefreshCw size={13} className="animate-spin" /> : <UserCheck size={13} />} Ré-évaluer
+            </button>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SuggestionGroup({
+  title, items, checked, onToggle, onApply, applying, applyLabel,
+}: {
+  title: string;
+  items: string[];
+  checked: Set<number>;
+  onToggle: (i: number) => void;
+  onApply: () => void;
+  applying: boolean;
+  applyLabel: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-2.5">
+      <div className="text-label-sm text-on-surface-variant mb-1">{title}</div>
+      <ul className="space-y-1">
+        {items.map((it, i) => (
+          <li key={i}>
+            <label className="flex gap-1.5 text-[12px] text-on-surface cursor-pointer">
+              <input
+                type="checkbox"
+                checked={checked.has(i)}
+                onChange={() => onToggle(i)}
+                className="mt-0.5 h-3.5 w-3.5 accent-[var(--tertiary)] shrink-0"
+              />
+              <span>{it}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <button
+        onClick={onApply}
+        disabled={applying || checked.size === 0}
+        className="btn-primary btn-sm w-full mt-1.5"
+      >
+        {applying ? <RefreshCw size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+        {applyLabel} ({checked.size})
+      </button>
     </div>
   );
 }

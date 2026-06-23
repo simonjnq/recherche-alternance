@@ -156,12 +156,14 @@ export function getReview(id: number): Promise<{ review: RecruiterReview | null 
   return request<{ review: RecruiterReview | null }>(`/offers/${id}/review`);
 }
 
-export function regenerateWithReview(
-  id: number
+export function regenerateDoc(
+  id: number,
+  target: "cv" | "letter",
+  suggestions: string[]
 ): Promise<{ ok: boolean; review: RecruiterReview }> {
   return request<{ ok: boolean; review: RecruiterReview }>(
-    `/offers/${id}/regenerate-with-review`,
-    { method: "POST" }
+    `/offers/${id}/regenerate-doc`,
+    { method: "POST", body: JSON.stringify({ target, suggestions }) }
   );
 }
 
