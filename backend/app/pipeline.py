@@ -372,8 +372,14 @@ async def _finish_run(db, run_id: int, stats: dict[str, Any]) -> None:
     await db.commit()
 
 
-async def regenerate_for_offer(offer_id: int) -> Optional[Path]:
-    """Regénère CV+lettre pour une offre déjà scorée (bouton 'Refaire'/'Générer')."""
+async def regenerate_for_offer(
+    offer_id: int, cv_notes: str | None = None, letter_notes: str | None = None
+) -> Optional[Path]:
+    """Regénère CV+lettre pour une offre déjà scorée (bouton 'Refaire'/'Générer').
+
+    `cv_notes`/`letter_notes` : consignes additionnelles (ex. retour de l'agent
+    recruteur) injectées dans la régénération.
+    """
     profile = load_profile()
     db = await dbm.connect()
     try:
@@ -385,10 +391,14 @@ async def regenerate_for_offer(offer_id: int) -> Optional[Path]:
         if not style_html:
             raise RuntimeError("Aucun CV. Upload d'abord un CV.")
         structured_text = profile_to_text(combined) if combined else None
-        cv_html = await adapt_cv(style_html, offer, profile_text=structured_text, extra_instructions=profile.get("custom_instructions"))
+        cv_extra = "\n\n".join(
+            x for x in [(profile.get("custom_instructions") or "").strip(), (cv_notes or "").strip()] if x
+        )
+        cv_html = await adapt_cv(style_html, offer, profile_text=structured_text, extra_instructions=cv_extra or None)
         cv_html = await fit_cv_html(cv_html)
         letter_md = await generate_letter(
             offer, style_html, profile, profile_text=structured_text,
+            extra_instructions=(letter_notes or None),
         )
         folder = OFFERS_DIR / offer.slug()
         folder.mkdir(parents=True, exist_ok=True)

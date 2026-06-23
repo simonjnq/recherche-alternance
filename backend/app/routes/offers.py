@@ -286,6 +286,67 @@ async def generate(offer_id: int) -> dict:
     return {"ok": True, "folder": str(folder)}
 
 
+# --- Agent recruteur : avis sur la candidature + régénération guidée ---
+
+def _review_path(cv_path: Path) -> Path:
+    return cv_path.with_name("review.json")
+
+
+@router.post("/{offer_id}/review")
+async def recruiter_review_route(offer_id: int) -> dict:
+    """Fait évaluer la candidature générée par l'agent recruteur (verdict + retour)."""
+    from ..llm.recruiter import recruiter_review, html_to_text
+    docs, offer = await _require_docs(offer_id)
+    cv_path = Path(docs.adapted_cv_path)
+    if not cv_path.exists():
+        raise HTTPException(404, "CV non généré")
+    letter_path = Path(docs.letter_path)
+    letter_md = letter_path.read_text() if letter_path.exists() else ""
+    review = await recruiter_review(offer, html_to_text(cv_path.read_text()), letter_md)
+    _write_json(_review_path(cv_path), review)
+    return review
+
+
+@router.get("/{offer_id}/review")
+async def get_review(offer_id: int) -> dict:
+    """Retourne le dernier avis recruteur s'il existe (sinon null)."""
+    docs, _ = await _require_docs(offer_id)
+    review = _read_json(_review_path(Path(docs.adapted_cv_path)))
+    return {"review": review}
+
+
+@router.post("/{offer_id}/regenerate-with-review")
+async def regenerate_with_review(offer_id: int) -> dict:
+    """Régénère CV+lettre en intégrant le dernier retour recruteur, puis ré-évalue."""
+    from ..llm.recruiter import (
+        recruiter_review, review_to_cv_notes, review_to_letter_notes, html_to_text,
+    )
+    docs, _ = await _require_docs(offer_id)
+    review = _read_json(_review_path(Path(docs.adapted_cv_path)))
+    if not review:
+        raise HTTPException(400, "Aucun avis recruteur à intégrer. Lance d'abord l'avis.")
+    try:
+        folder = await regenerate_for_offer(
+            offer_id,
+            cv_notes=review_to_cv_notes(review),
+            letter_notes=review_to_letter_notes(review),
+        )
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(422, str(e)) from e
+    if folder is None:
+        raise HTTPException(404, "Offre introuvable")
+    # Ré-évaluation après amélioration
+    docs2, offer = await _require_docs(offer_id)
+    cv_path = Path(docs2.adapted_cv_path)
+    letter_path = Path(docs2.letter_path)
+    new_review = await recruiter_review(
+        offer, html_to_text(cv_path.read_text()),
+        letter_path.read_text() if letter_path.exists() else "",
+    )
+    _write_json(_review_path(cv_path), new_review)
+    return {"ok": True, "review": new_review}
+
+
 @router.get("/{offer_id}/cv")
 async def download_cv(offer_id: int):
     db = await dbm.connect()

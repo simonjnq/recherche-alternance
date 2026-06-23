@@ -221,6 +221,7 @@ async def generate_letter(
     cv_html: str,
     profile: dict[str, Any],
     profile_text: str | None = None,
+    extra_instructions: str | None = None,
 ) -> str:
     candidate_name = (profile.get("name") or "").strip() or "[Votre nom]"
     style = (profile.get("letter_style") or "natural").lower()
@@ -250,6 +251,8 @@ async def generate_letter(
         extra_user_bits.append(
             "CONSIGNES PERMANENTES DU CANDIDAT (à respecter impérativement) :\n" + custom
         )
+    if extra_instructions and extra_instructions.strip():
+        extra_user_bits.append(extra_instructions.strip())
 
     addressee = _addressee(offer)
 

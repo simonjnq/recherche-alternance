@@ -138,6 +138,33 @@ export function generateOffer(id: number): Promise<void> {
   return request<void>(`/offers/${id}/generate`, { method: "POST" });
 }
 
+export interface RecruiterReview {
+  verdict: "entretien" | "peut-etre" | "non";
+  score: number;
+  verdict_reason: string;
+  strengths: string[];
+  weaknesses: string[];
+  cv_suggestions: string[];
+  letter_suggestions: string[];
+}
+
+export function reviewOffer(id: number): Promise<RecruiterReview> {
+  return request<RecruiterReview>(`/offers/${id}/review`, { method: "POST" });
+}
+
+export function getReview(id: number): Promise<{ review: RecruiterReview | null }> {
+  return request<{ review: RecruiterReview | null }>(`/offers/${id}/review`);
+}
+
+export function regenerateWithReview(
+  id: number
+): Promise<{ ok: boolean; review: RecruiterReview }> {
+  return request<{ ok: boolean; review: RecruiterReview }>(
+    `/offers/${id}/regenerate-with-review`,
+    { method: "POST" }
+  );
+}
+
 export function exportCsvUrl(favoritesOnly = true): string {
   return `${API_BASE}/offers/export.csv?favorites_only=${favoritesOnly ? "true" : "false"}`;
 }
