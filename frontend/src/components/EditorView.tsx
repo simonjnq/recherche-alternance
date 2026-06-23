@@ -190,7 +190,7 @@ export function EditorView({ offerId, onBack }: Props) {
               onToggle={(i) => toggle(checkedCv, setCheckedCv, i)}
               onApply={() => improveDoc("cv")}
               applying={improving === "cv"}
-              applyLabel="Régénérer le CV"
+              applyLabel="Corriger le CV"
             />
             <SuggestionGroup
               title="Corrections lettre"
@@ -199,7 +199,7 @@ export function EditorView({ offerId, onBack }: Props) {
               onToggle={(i) => toggle(checkedLetter, setCheckedLetter, i)}
               onApply={() => improveDoc("letter")}
               applying={improving === "letter"}
-              applyLabel="Régénérer la lettre"
+              applyLabel="Corriger la lettre"
             />
 
             <button onClick={runReview} disabled={reviewing} className="btn-secondary btn-sm w-full mt-3">

@@ -16,6 +16,7 @@ from .contract_filter import is_alternance
 from .relevance import is_relevant
 from .llm.cv_adapter import adapt_cv
 from .llm.cv_fit import fit_cv_html
+from .llm.doc_editor import apply_instructions_to_cv, apply_instructions_to_letter
 from .llm.cv_profile import ensure_combined_profile, profile_to_text
 from .llm.letter import generate_letter
 from .llm.scoring import score_offer
@@ -419,41 +420,39 @@ async def regenerate_for_offer(
 async def regenerate_doc(
     offer_id: int, target: str, notes: str | None = None
 ) -> Optional[Path]:
-    """Régénère UN SEUL document (target='cv' ou 'letter') en intégrant `notes`
-    (corrections cochées). L'autre document n'est pas touché."""
+    """Applique des corrections à UN SEUL document (target='cv' ou 'letter') en
+    ÉDITANT la version actuelle (on ne recrée pas tout de zéro : la version
+    peaufinée par l'utilisateur est préservée, seules les corrections sont appliquées).
+    L'autre document n'est pas touché."""
     if target not in ("cv", "letter"):
         raise ValueError("target doit être 'cv' ou 'letter'")
-    profile = load_profile()
     db = await dbm.connect()
     try:
         offer = await dbm.get_offer(db, offer_id)
         if not offer:
             return None
-        combined, style_html, _ = await ensure_combined_profile(db)
-        if not style_html:
-            raise RuntimeError("Aucun CV. Upload d'abord un CV.")
-        structured_text = profile_to_text(combined) if combined else None
         folder = OFFERS_DIR / offer.slug()
-        folder.mkdir(parents=True, exist_ok=True)
+        if not folder.exists():
+            raise RuntimeError("Candidature non générée. Génère d'abord le document.")
+        instruction = (notes or "").strip() or "Améliore ce document."
 
         if target == "cv":
-            cv_extra = "\n\n".join(
-                x for x in [(profile.get("custom_instructions") or "").strip(), (notes or "").strip()] if x
-            )
-            cv_html = await adapt_cv(style_html, offer, profile_text=structured_text, extra_instructions=cv_extra or None)
-            cv_html = await fit_cv_html(cv_html)
-            (folder / "cv.html").write_text(cv_html)
-            # Invalide le cache éditable → l'éditeur ré-extrait depuis le nouveau cv.html
-            for name in ("cv.structured.json",):
-                p = folder / name
-                if p.exists():
-                    p.unlink()
+            cv_path = folder / "cv.html"
+            if not cv_path.exists():
+                raise RuntimeError("CV non généré.")
+            new_html = await apply_instructions_to_cv(cv_path.read_text(), instruction)
+            new_html = await fit_cv_html(new_html)
+            cv_path.write_text(new_html)
+            # Invalide le cache éditable → l'éditeur ré-extrait depuis le CV corrigé
+            p = folder / "cv.structured.json"
+            if p.exists():
+                p.unlink()
         else:  # letter
-            letter_md = await generate_letter(
-                offer, style_html, profile, profile_text=structured_text,
-                extra_instructions=(notes or None),
-            )
-            (folder / "letter.md").write_text(letter_md)
+            letter_path = folder / "letter.md"
+            if not letter_path.exists():
+                raise RuntimeError("Lettre non générée.")
+            new_md = await apply_instructions_to_letter(letter_path.read_text(), instruction)
+            letter_path.write_text(new_md)
         return folder
     finally:
         await db.close()
