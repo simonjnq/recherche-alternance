@@ -9,16 +9,23 @@ import {
   List as ListIcon,
   ListOrdered,
   Loader2,
+  RefreshCw,
   Save,
   Sparkles,
   Strikethrough,
+  UserCheck,
+  X,
 } from "lucide-react";
 import {
   aiEditLetter,
   downloadLetterPdfUrl,
   getGeneratedLetter,
   getOffer,
+  getReview,
   putGeneratedLetter,
+  regenerateWithReview,
+  reviewOffer,
+  type RecruiterReview,
 } from "../api";
 import type { OfferDetail } from "../types";
 import { cn } from "../lib/utils";
@@ -34,10 +41,41 @@ interface Props {
 export function EditorView({ offerId, onBack }: Props) {
   const [data, setData] = useState<OfferDetail | null>(null);
   const [tab, setTab] = useState<Tab>("cv");
+  const [review, setReview] = useState<RecruiterReview | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [improving, setImproving] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0); // force le remontage des éditeurs après régé
 
   useEffect(() => {
     getOffer(offerId).then(setData).catch((e) => console.error(e));
+    getReview(offerId).then((r) => setReview(r.review)).catch(() => undefined);
   }, [offerId]);
+
+  const runReview = async () => {
+    setReviewing(true);
+    setPanelOpen(true);
+    try {
+      setReview(await reviewOffer(offerId));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  const improveWithReview = async () => {
+    setImproving(true);
+    try {
+      const r = await regenerateWithReview(offerId);
+      setReview(r.review);
+      setReloadKey((k) => k + 1); // recharge CV + lettre régénérés
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImproving(false);
+    }
+  };
 
   const title = data?.offer.title ?? "…";
   const subtitle = data
@@ -66,19 +104,100 @@ export function EditorView({ offerId, onBack }: Props) {
             Lettre
           </TabBtn>
         </div>
+        <button
+          onClick={review && !reviewing ? () => setPanelOpen((v) => !v) : runReview}
+          disabled={reviewing}
+          className="btn-primary btn-sm"
+          title="Faire évaluer CV + lettre par un agent recruteur"
+        >
+          {reviewing ? <RefreshCw size={14} className="animate-spin" /> : <UserCheck size={14} />}
+          Avis recruteur
+          {review && (
+            <span className="ml-1 text-[11px] opacity-90">{review.score}/100</span>
+          )}
+        </button>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden relative">
         {data ? (
           tab === "cv" ? (
-            <CVVisualEditor offerId={offerId} />
+            <CVVisualEditor key={`cv-${reloadKey}`} offerId={offerId} />
           ) : (
-            <LetterEditor offerId={offerId} />
+            <LetterEditor key={`letter-${reloadKey}`} offerId={offerId} />
           )
         ) : (
           <div className="p-6 text-sm text-on-surface-variant">Chargement…</div>
         )}
+
+        {review && panelOpen && (
+          <div className="absolute top-3 right-3 z-30 w-[360px] max-h-[calc(100%-24px)] overflow-y-auto card shadow-level-3 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck size={15} className="text-on-surface-variant" />
+              <span className="section-label">Avis recruteur</span>
+              <span
+                className={
+                  "badge ml-1 " +
+                  (review.verdict === "entretien"
+                    ? "badge-success"
+                    : review.verdict === "non"
+                      ? "badge-error"
+                      : "badge-info")
+                }
+              >
+                {review.verdict === "entretien"
+                  ? "Convoque en entretien"
+                  : review.verdict === "non"
+                    ? "Ne convoque pas"
+                    : "Mitigé"}
+              </span>
+              <span className="ml-auto text-label-md text-on-surface tabular-nums">{review.score}/100</span>
+              <button onClick={() => setPanelOpen(false)} className="p-1 rounded hover:bg-surface-c" aria-label="Fermer">
+                <X size={14} />
+              </button>
+            </div>
+            {review.verdict_reason && (
+              <p className="text-[13px] text-on-surface-variant mb-2">{review.verdict_reason}</p>
+            )}
+            {review.strengths.length > 0 && <RevList title="Points forts" items={review.strengths} tone="ok" />}
+            {review.weaknesses.length > 0 && <RevList title="Faiblesses" items={review.weaknesses} tone="bad" />}
+            {(review.cv_suggestions.length > 0 || review.letter_suggestions.length > 0) && (
+              <RevList
+                title="À améliorer"
+                items={[
+                  ...review.cv_suggestions.map((s) => `CV — ${s}`),
+                  ...review.letter_suggestions.map((s) => `Lettre — ${s}`),
+                ]}
+                tone="info"
+              />
+            )}
+            <div className="flex gap-2 mt-3">
+              <button onClick={runReview} disabled={reviewing} className="btn-secondary btn-sm flex-1">
+                {reviewing ? <RefreshCw size={13} className="animate-spin" /> : <UserCheck size={13} />} Ré-évaluer
+              </button>
+              <button onClick={improveWithReview} disabled={improving} className="btn-primary btn-sm flex-1" title="Régénère CV + lettre en corrigeant les points, puis ré-évalue">
+                {improving ? <RefreshCw size={13} className="animate-spin" /> : <RefreshCw size={13} />} Régénérer
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function RevList({ title, items, tone }: { title: string; items: string[]; tone: "ok" | "bad" | "info" }) {
+  const dot = tone === "ok" ? "text-secondary" : tone === "bad" ? "text-error" : "text-tertiary";
+  return (
+    <div className="mt-1.5">
+      <div className="text-label-sm text-on-surface-variant">{title}</div>
+      <ul className="mt-0.5 space-y-0.5">
+        {items.map((it, i) => (
+          <li key={i} className="flex gap-1.5 text-[12px] text-on-surface">
+            <span className={dot}>•</span>
+            <span>{it}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

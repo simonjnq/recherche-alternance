@@ -14,7 +14,6 @@ import {
   Square,
   CheckSquare,
   Star,
-  UserCheck,
   X,
 } from "lucide-react";
 import {
@@ -24,15 +23,11 @@ import {
   getGeneratedCV,
   getGeneratedLetter,
   getOffer,
-  getReview,
   hideOffer,
-  regenerateWithReview,
-  reviewOffer,
   setFavorite,
   setOfferStatus,
   updateOfferTracking,
   type OfferTracking,
-  type RecruiterReview,
 } from "../api";
 import type { OfferDetail as OfferDetailType } from "../types";
 import { SOURCE_LABEL } from "../types";
@@ -60,9 +55,6 @@ export function OfferDetail({ offerId, onClose, onChanged, onEdit }: Props) {
   const [tracking, setTracking] = useState<OfferTracking>({});
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [preview, setPreview] = useState<{ tab: "cv" | "letter"; cv: string; letter: string } | null>(null);
-  const [review, setReview] = useState<RecruiterReview | null>(null);
-  const [reviewing, setReviewing] = useState(false);
-  const [improving, setImproving] = useState(false);
 
   const reload = () => {
     getOffer(offerId).then(setData).catch(console.error);
@@ -70,36 +62,9 @@ export function OfferDetail({ offerId, onClose, onChanged, onEdit }: Props) {
 
   useEffect(() => {
     setData(null);
-    setReview(null);
     reload();
-    getReview(offerId).then((r) => setReview(r.review)).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offerId]);
-
-  const runReview = async () => {
-    setReviewing(true);
-    try {
-      setReview(await reviewOffer(offerId));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setReviewing(false);
-    }
-  };
-
-  const improveWithReview = async () => {
-    setImproving(true);
-    try {
-      const r = await regenerateWithReview(offerId);
-      setReview(r.review);
-      reload();
-      onChanged();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setImproving(false);
-    }
-  };
 
   // Synchronise le brouillon de suivi quand l'offre chargée change
   useEffect(() => {
@@ -350,10 +315,6 @@ export function OfferDetail({ offerId, onClose, onChanged, onEdit }: Props) {
               <button onClick={copyCvText} className="btn-secondary btn-sm">
                 <Copy size={14} /> Copier le CV
               </button>
-              <button onClick={runReview} disabled={reviewing} className="btn-primary btn-sm" title="Faire évaluer la candidature par un agent recruteur">
-                {reviewing ? <RefreshCw size={14} className="animate-spin" /> : <UserCheck size={14} />}
-                Avis recruteur
-              </button>
             </>
           )}
           {offer.contact && offer.contact.includes("@") && (
@@ -367,57 +328,6 @@ export function OfferDetail({ offerId, onClose, onChanged, onEdit }: Props) {
             </a>
           )}
         </div>
-
-        {review && (
-          <div className="card p-3 mb-5">
-            <div className="flex items-center gap-2 mb-2">
-              <UserCheck size={15} className="text-on-surface-variant" />
-              <span className="section-label">Avis recruteur</span>
-              <span
-                className={
-                  "badge ml-1 " +
-                  (review.verdict === "entretien"
-                    ? "badge-success"
-                    : review.verdict === "non"
-                      ? "badge-error"
-                      : "badge-info")
-                }
-              >
-                {review.verdict === "entretien"
-                  ? "Convoque en entretien"
-                  : review.verdict === "non"
-                    ? "Ne convoque pas"
-                    : "Mitigé"}
-              </span>
-              <span className="ml-auto text-label-md text-on-surface tabular-nums">{review.score}/100</span>
-            </div>
-            {review.verdict_reason && (
-              <p className="text-body-md text-[13px] text-on-surface-variant mb-2">{review.verdict_reason}</p>
-            )}
-            {review.strengths.length > 0 && (
-              <ReviewList title="Points forts" items={review.strengths} tone="ok" />
-            )}
-            {review.weaknesses.length > 0 && (
-              <ReviewList title="Faiblesses" items={review.weaknesses} tone="bad" />
-            )}
-            {(review.cv_suggestions.length > 0 || review.letter_suggestions.length > 0) && (
-              <ReviewList
-                title="À améliorer"
-                items={[...review.cv_suggestions, ...review.letter_suggestions]}
-                tone="info"
-              />
-            )}
-            <button
-              onClick={improveWithReview}
-              disabled={improving}
-              className="btn-primary btn-sm mt-3 w-full"
-              title="Régénère CV + lettre en corrigeant les points soulevés, puis ré-évalue"
-            >
-              {improving ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              Régénérer avec ce retour
-            </button>
-          </div>
-        )}
 
         {offer.is_favorite && (
           <Section title="Suivi de candidature">
@@ -588,23 +498,6 @@ export function OfferDetail({ offerId, onClose, onChanged, onEdit }: Props) {
         </div>
       )}
     </aside>
-  );
-}
-
-function ReviewList({ title, items, tone }: { title: string; items: string[]; tone: "ok" | "bad" | "info" }) {
-  const dot = tone === "ok" ? "text-secondary" : tone === "bad" ? "text-error" : "text-tertiary";
-  return (
-    <div className="mt-1.5">
-      <div className="text-label-sm text-on-surface-variant">{title}</div>
-      <ul className="mt-0.5 space-y-0.5">
-        {items.map((it, i) => (
-          <li key={i} className="flex gap-1.5 text-[13px] text-on-surface">
-            <span className={dot}>•</span>
-            <span>{it}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
