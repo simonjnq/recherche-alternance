@@ -302,7 +302,10 @@ Retourne UNIQUEMENT le HTML complet (de <!DOCTYPE html> à </html>), sans texte 
 SYSTEM_BLOCKS = cached_system([SYSTEM_INTRO, SYSTEM_TEMPLATE, SYSTEM_RULES])
 
 
-async def adapt_cv(cv_html: str, offer: Offer, profile_text: str | None = None) -> str:
+async def adapt_cv(
+    cv_html: str, offer: Offer, profile_text: str | None = None,
+    extra_instructions: str | None = None,
+) -> str:
     offer_text = f"""Offre :
 Titre : {offer.title}
 Entreprise : {offer.company or 'n/c'}
@@ -321,6 +324,13 @@ Description complète :
     else:
         facts_block = "PROFIL CANDIDAT : (non extrait — utiliser le HTML source comme référence)"
 
+    custom_block = ""
+    if extra_instructions and extra_instructions.strip():
+        custom_block = (
+            "\n\nCONSIGNES PERMANENTES DU CANDIDAT (à respecter impérativement) :\n"
+            + extra_instructions.strip()
+        )
+
     user = f"""{facts_block}
 
 ---
@@ -330,7 +340,7 @@ CV SOURCE (HTML — pour repère stylistique uniquement) :
 
 ---
 
-{offer_text}
+{offer_text}{custom_block}
 
 Produis la version HTML du CV adaptée à cette offre, en suivant strictement le template."""
 

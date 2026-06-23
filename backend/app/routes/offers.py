@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Optional
 
@@ -17,6 +18,32 @@ from ..llm.doc_editor import apply_instructions_to_cv, apply_instructions_to_let
 from ..llm.client import complete, complete_json
 from ..pipeline import regenerate_for_offer
 from ..render_pdf import html_to_pdf
+
+logger = logging.getLogger(__name__)
+# Journal dédié des retours faits à l'IA (pour repérer les corrections récurrentes
+# et, plus tard, les transformer en consignes permanentes).
+_feedback_logger = logging.getLogger("ai_feedback")
+if not _feedback_logger.handlers:
+    from ..config import DATA_DIR
+    _fh = logging.FileHandler(DATA_DIR / "ai_feedback.log", encoding="utf-8")
+    _fh.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    _feedback_logger.addHandler(_fh)
+    _feedback_logger.setLevel(logging.INFO)
+
+
+def _custom_instructions() -> str:
+    from ..config import load_profile
+    return (load_profile().get("custom_instructions") or "").strip()
+
+
+def _augment(instruction: str, kind: str, offer_id: int) -> str:
+    """Logge le retour utilisateur et y ajoute les consignes permanentes."""
+    _feedback_logger.info("[%s] offer=%s : %s", kind, offer_id, instruction)
+    ci = _custom_instructions()
+    if ci:
+        return f"{instruction}\n\nConsignes permanentes du candidat (toujours respecter) : {ci}"
+    return instruction
+
 
 router = APIRouter(prefix="/api/offers", tags=["offers"])
 
@@ -313,6 +340,7 @@ async def ai_edit_cv(offer_id: int, payload: dict = Body(...)) -> dict:
     instruction = (payload.get("instruction") or "").strip()
     if not instruction:
         raise HTTPException(400, "Champ 'instruction' manquant")
+    instruction = _augment(instruction, "cv/ai-edit", offer_id)
     docs, _ = await _require_docs(offer_id)
     current = Path(docs.adapted_cv_path).read_text()
     new_html = await apply_instructions_to_cv(current, instruction)
@@ -345,6 +373,7 @@ async def ai_edit_letter(offer_id: int, payload: dict = Body(...)) -> dict:
     instruction = (payload.get("instruction") or "").strip()
     if not instruction:
         raise HTTPException(400, "Champ 'instruction' manquant")
+    instruction = _augment(instruction, "letter/ai-edit", offer_id)
     docs, _ = await _require_docs(offer_id)
     current = Path(docs.letter_path).read_text()
     new_md = await apply_instructions_to_letter(current, instruction)
@@ -616,6 +645,7 @@ async def ai_global(offer_id: int, payload: dict = Body(...)) -> dict:
     instruction = (payload.get("instruction") or "").strip()
     if not instruction:
         raise HTTPException(400, "Champ 'instruction' manquant")
+    instruction = _augment(instruction, "cv/ai-global", offer_id)
 
     from ..llm.cv_profile import ensure_combined_profile
     db = await dbm.connect()

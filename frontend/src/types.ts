@@ -109,6 +109,7 @@ export interface Profile {
   blocked_companies?: string[];
   relevance_strong?: string[];
   relevance_excluded?: string[];
+  custom_instructions?: string;
 }
 
 export type ProgressStage =

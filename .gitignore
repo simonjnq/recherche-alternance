@@ -9,6 +9,7 @@ data/db.sqlite
 data/db.sqlite-*
 data/db.sqlite.bak-*
 data/*.bak
+data/*.log
 data/profile_photo.*
 data/profile.json
 data/cvs/*.html

@@ -245,6 +245,11 @@ async def generate_letter(
     if signatures:
         bullets = "\n".join(f"- {s}" for s in signatures[:6])
         extra_user_bits.append(f"Réalisations signature du candidat :\n{bullets}")
+    custom = (profile.get("custom_instructions") or "").strip()
+    if custom:
+        extra_user_bits.append(
+            "CONSIGNES PERMANENTES DU CANDIDAT (à respecter impérativement) :\n" + custom
+        )
 
     addressee = _addressee(offer)
 

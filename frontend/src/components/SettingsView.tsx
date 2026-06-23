@@ -251,6 +251,15 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
               className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5 resize-y leading-snug"
             />
           </Field>
+          <Field label="Consignes permanentes (tes retours récurrents — appliqués à chaque CV + lettre et à l'édition IA)">
+            <textarea
+              value={profile.custom_instructions ?? ""}
+              onChange={(e) => update({ custom_instructions: e.target.value })}
+              rows={3}
+              placeholder={"ex: bullets ≤ 12 mots\ntoujours chiffrer les résultats\nne jamais écrire \"passionné\"\nintro en 1 phrase max"}
+              className="w-full text-sm border border-outline-variant rounded-md px-2.5 py-1.5 resize-y leading-snug"
+            />
+          </Field>
           <Field label="Tournures interdites (une par ligne — vide = liste par défaut)">
             <textarea
               value={(profile.forbidden_phrases ?? []).join("\n")}

@@ -302,7 +302,7 @@ async def _run_search_inner() -> None:
         async def generate_one(i: int, offer: Offer) -> None:
             async with gen_sem:
                 try:
-                    cv_html = await adapt_cv(style_html, offer, profile_text=structured_text)
+                    cv_html = await adapt_cv(style_html, offer, profile_text=structured_text, extra_instructions=profile.get("custom_instructions"))
                     cv_html = await fit_cv_html(cv_html)
                     letter_md = await generate_letter(
                         offer, style_html, profile, profile_text=structured_text,
@@ -385,7 +385,7 @@ async def regenerate_for_offer(offer_id: int) -> Optional[Path]:
         if not style_html:
             raise RuntimeError("Aucun CV. Upload d'abord un CV.")
         structured_text = profile_to_text(combined) if combined else None
-        cv_html = await adapt_cv(style_html, offer, profile_text=structured_text)
+        cv_html = await adapt_cv(style_html, offer, profile_text=structured_text, extra_instructions=profile.get("custom_instructions"))
         cv_html = await fit_cv_html(cv_html)
         letter_md = await generate_letter(
             offer, style_html, profile, profile_text=structured_text,

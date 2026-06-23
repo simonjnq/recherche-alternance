@@ -72,6 +72,9 @@ DEFAULT_PROFILE: dict[str, Any] = {
     # Réglage du filtre de pertinence (mots forts en plus / mots à exclure)
     "relevance_strong": [],
     "relevance_excluded": [],
+    # Consignes permanentes appliquées à chaque génération/édition CV + lettre
+    # (tes retours récurrents : ex. "bullets ≤ 12 mots", "toujours chiffrer", …)
+    "custom_instructions": "",
 }
 
 
