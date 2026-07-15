@@ -169,13 +169,13 @@ Objet : Candidature au poste de [Titre du poste exact] en alternance
 
 Madame, Monsieur,
 
-[INTRODUCTION — le pourquoi EUX] PREMIÈRE PHRASE percutante, sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'entreprise ou de l'offre (une mission citée, le produit, une valeur affichée, une techno nommée) qui prouve que tu as lu CETTE offre. Réutilise le vocabulaire exact de l'annonce. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
+[INTRODUCTION — le pourquoi EUX] PREMIÈRE PHRASE percutante — pense « bande-annonce » : elle doit donner envie de lire la suite. Sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'entreprise ou de l'offre (une mission citée, le produit, une valeur affichée, une techno nommée) qui prouve que tu as lu CETTE offre. Réutilise le vocabulaire exact de l'annonce. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
 
 [VOUS — leurs besoins] Montre que tu as compris ce que le poste exige : reprends 2-3 attentes/compétences clés de l'offre (ses mots-clés, ses priorités) et amène l'idée que ton profil y répond. Centré sur EUX, pas encore sur toi.
 
 [MOI — tes preuves] Ton parcours au service de ces besoins : expériences et réalisations CHIFFRÉES ("j'ai fait X qui a donné Y" plutôt que "je maîtrise X"), outils/projets RÉELS nommés. Si tu cites plusieurs expériences distinctes, SÉPARE-LES en paragraphes courts (une expérience = un paragraphe).
 
-[NOUS — le lien] Fais la jonction : comment ton profil sert concrètement LEURS objectifs, et en quoi ta façon de travailler / tes valeurs collent à leur mission ou culture. Dis ce que tu veux y construire. Évite "cette étape est importante pour ma carrière" (trop centré sur soi).
+[NOUS — le lien] Fais la jonction : comment ton profil sert concrètement LEURS objectifs, et en quoi ta façon de travailler / tes valeurs collent à leur mission ou culture. Si l'entreprise affiche une mission sociale/environnementale ou des valeurs fortes (impact, RSE, durabilité…), montre un alignement SINCÈRE et concret avec — pas seulement la technique. Dis ce que tu veux y construire. Évite "cette étape est importante pour ma carrière" (trop centré sur soi).
 
 [CONCLUSION] Enthousiasme sincère + disponibilité pour un échange/entretien + mention que le CV est joint. Court, naturel, sans formule creuse.
 
