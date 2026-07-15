@@ -169,7 +169,7 @@ Objet : Candidature au poste de [Titre du poste exact] en alternance
 
 Madame, Monsieur,
 
-[INTRODUCTION — le pourquoi EUX] PREMIÈRE PHRASE percutante — pense « bande-annonce » : elle doit donner envie de lire la suite. Sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'entreprise ou de l'offre (une mission citée, le produit, une valeur affichée, une techno nommée) qui prouve que tu as lu CETTE offre. Réutilise le vocabulaire exact de l'annonce. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
+[INTRODUCTION — le pourquoi EUX] PREMIÈRE PHRASE percutante — pense « bande-annonce » : elle doit donner envie de lire la suite. Sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" INTERDITS en ouverture). Choisis l'angle d'accroche le plus pertinent et SINCÈRE parmi : (a) une expérience/réalisation passée qui colle directement au poste, (b) un alignement fort avec leur mission/valeurs, (c) un fait concret de l'entreprise (projet, produit, innovation récente, techno nommée), (d) une mini-anecdote concrète. Réutilise le vocabulaire exact de l'annonce et dis-le avec TA voix (simple, authentique), jamais artificiel. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
 
 [VOUS — leurs besoins] Montre que tu as compris ce que le poste exige : reprends 2-3 attentes/compétences clés de l'offre (ses mots-clés, ses priorités) et amène l'idée que ton profil y répond. Centré sur EUX, pas encore sur toi.
 

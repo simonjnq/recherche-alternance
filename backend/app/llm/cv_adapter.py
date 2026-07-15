@@ -272,7 +272,7 @@ CAPS DURS DE CONTENU (à NE PAS dépasser — sinon le CV déborde)
 - Bullets par expérience : 3 à 5 SELON LA PLACE DISPONIBLE (vise 4-5 si la page n'est pas pleine), **≤ 20 mots chacun**. Action + résultat/outil concret. VARIE les débuts de bullets — ne commence pas systématiquement par un participe passé (verbe en -é). Pas de bullets génériques.
 - Projets pédagogiques : 2 max. Description ≤ 18 mots.
 - Projets personnels : 2 max. Description ≤ 18 mots.
-- Intro italique : 1 phrase, 15-25 mots max.
+- Intro italique = vraie PHRASE D'ACCROCHE (2-3 lignes) : métier/positionnement + spécialité qui te différencie + UNE réalisation concrète/chiffrée + valeur ajoutée, en reprenant 3-4 mots-clés de l'offre. Concis et impactant, pas de « je suis motivé et dynamique ».
 - REMPLISSAGE VERTICAL : la page A4 doit être BIEN REMPLIE. S'il reste de la place, PRIVILÉGIE davantage de contenu réel — développe les bullets (contexte + résultat concret), ajoute une expérience/un projet pertinent, allonge les descriptions — PLUTÔT que de gonfler les espacements. Ne laisse jamais un gros trou. Ne change pas la structure (wrappers `.head` / `.sections` / `.top` / `.flow`).
 - DENSITÉ : choisis la classe du <body> selon le volume de contenu :
   - `density-compact` → beaucoup de contenu (≥3 expériences avec ≥4 bullets chacune, plusieurs projets). Objectif : faire tenir sans déborder.
@@ -288,7 +288,7 @@ RÈGLES DE CONTENU
 - Les faits factuels (dates, noms d'entreprises, diplômes, écoles, villes, nom, email, téléphone, LinkedIn) restent INCHANGÉS — tu n'inventes rien.
 - Si une section n'a pas de contenu dans le CV source (ex: pas de projets personnels), SUPPRIME complètement la balise <section> correspondante. Ne mets jamais de texte placeholder.
 - Si pas de photo dans le CV source : mets les initiales dans `.photo` (2 lettres majuscules). Si une image URL ou un data:image est fourni dans le CV source, injecte-la via `style="background-image:url(…)"`.
-- Intro : une phrase italique adaptée à l'offre (2 lignes max).
+- Intro : phrase d'accroche adaptée à l'offre (2-3 lignes) — cf. règle « Intro italique » ci-dessus (métier + spécialité + réalisation chiffrée + mots-clés de l'offre).
 
 AVANT DE RENDRE, CHECKLIST IMPLICITE
 - Pas d'overflow sidebar ni main (si doute, raccourcis bullets ou skills).
