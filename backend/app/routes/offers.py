@@ -112,6 +112,50 @@ LETTER_PDF_TEMPLATE = """<!DOCTYPE html>
 """
 
 
+@router.post("/manual")
+async def add_manual_offer(payload: dict = Body(...)) -> dict:
+    """Crée une offre à partir d'un texte collé (l'IA extrait les champs + score)."""
+    from ..models import OfferRaw
+    from ..text_clean import clean_offer_title, clean_description
+    from ..llm.offer_extractor import extract_offer_meta
+    from ..llm.scoring import score_offer
+    from ..config import load_profile
+
+    text = (payload.get("text") or "").strip()
+    url = (payload.get("url") or "").strip()
+    if len(text) < 30:
+        raise HTTPException(400, "Colle le texte complet de l'offre (au moins quelques lignes).")
+
+    meta = await extract_offer_meta(text)
+    raw = OfferRaw(
+        source="manual",
+        url=url,
+        title=clean_offer_title(meta.get("title") or "Offre ajoutée manuellement"),
+        company=meta.get("company"),
+        location=meta.get("location"),
+        contract=meta.get("contract"),
+        salary=meta.get("salary"),
+        description=clean_description(text, "manual")[:20000],
+    )
+
+    db = await dbm.connect()
+    try:
+        oid = await dbm.upsert_offer_raw(db, raw)
+        if oid is None:  # doublon → on renvoie l'offre existante
+            cur = await db.execute("SELECT id FROM offers WHERE dedup_key=?", (raw.dedup_key(),))
+            row = await cur.fetchone()
+            return {"ok": True, "offer_id": row["id"] if row else None, "duplicate": True}
+        offer = await dbm.get_offer(db, oid)
+        try:
+            scored = await score_offer(offer, load_profile())
+            await dbm.set_offer_scoring(db, oid, scored)
+        except Exception as e:
+            logger.warning("Scoring offre manuelle échoué (%s)", e)
+        return {"ok": True, "offer_id": oid, "duplicate": False}
+    finally:
+        await db.close()
+
+
 @router.get("")
 async def list_offers(
     min_score: int = 0,

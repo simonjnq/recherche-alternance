@@ -5,7 +5,8 @@ export type Source =
   | "hellowork"
   | "apec"
   | "linkedin"
-  | "linkedin_manual";
+  | "linkedin_manual"
+  | "manual";
 
 export interface Offer {
   id: number;
@@ -213,6 +214,7 @@ export const SOURCES: { key: Source; label: string }[] = [
   { key: "apec", label: "Apec" },
   { key: "linkedin", label: "LinkedIn" },
   { key: "linkedin_manual", label: "LinkedIn (manuel)" },
+  { key: "manual", label: "Collée" },
 ];
 
 export const SOURCE_LABEL: Record<Source, string> = Object.fromEntries(

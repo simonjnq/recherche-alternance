@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Sparkles, Trash2, Undo2 } from "lucide-react";
-import { cleanupOffers, hideOffer, listOffers, setFavorite, unhideOffer } from "../api";
+import { Search, Sparkles, Trash2, Undo2, Plus, X, Loader2 } from "lucide-react";
+import { addManualOffer, cleanupOffers, hideOffer, listOffers, setFavorite, unhideOffer } from "../api";
 import type { Offer, Source } from "../types";
 import { SOURCES } from "../types";
 import { OfferCard } from "./OfferCard";
@@ -39,6 +39,31 @@ export function OffersView({ favoritesOnly, refreshKey, onEdit }: Props) {
   const [contractFilter, setContractFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [daysFilter, setDaysFilter] = useState(0);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualText, setManualText] = useState("");
+  const [manualUrl, setManualUrl] = useState("");
+  const [manualBusy, setManualBusy] = useState(false);
+
+  const submitManual = async () => {
+    if (manualText.trim().length < 30) {
+      alert("Colle le texte complet de l'offre.");
+      return;
+    }
+    setManualBusy(true);
+    try {
+      const r = await addManualOffer(manualText.trim(), manualUrl.trim());
+      setManualOpen(false);
+      setManualText("");
+      setManualUrl("");
+      refreshList();
+      if (r.offer_id) setSelectedId(r.offer_id);
+      if (r.duplicate) alert("Cette offre existait déjà — ouverte.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setManualBusy(false);
+    }
+  };
 
   const params = useMemo(
     () => ({
@@ -313,6 +338,14 @@ export function OffersView({ favoritesOnly, refreshKey, onEdit }: Props) {
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setManualOpen(true)}
+              className="btn-primary btn-sm"
+              title="Coller une offre trouvée ailleurs — l'IA la crée pour toi"
+            >
+              <Plus size={14} /> Coller une offre
+            </button>
+            <button
+              type="button"
               onClick={() => handleCleanup("old")}
               className="btn-ghost btn-sm"
               title="Masquer les offres de plus de 30 jours (favoris préservés)"
@@ -401,6 +434,50 @@ export function OffersView({ favoritesOnly, refreshKey, onEdit }: Props) {
                   <a href={o.url} target="_blank" rel="noreferrer" className="btn-secondary btn-sm w-full mt-3">Ouvrir</a>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manualOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-on-surface/40 flex items-center justify-center p-4"
+          onClick={() => !manualBusy && setManualOpen(false)}
+        >
+          <div className="card w-full max-w-lg p-5 shadow-level-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center mb-3">
+              <h3 className="text-headline-md text-[18px]">Coller une offre</h3>
+              <button onClick={() => setManualOpen(false)} className="ml-auto p-1.5 rounded hover:bg-surface-c" aria-label="Fermer">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-body-md text-[13px] text-on-surface-variant mb-3">
+              Colle le texte complet de l'offre (titre, entreprise, missions…). L'IA en
+              extrait les infos, la score et l'ajoute à ta liste — prête pour CV + lettre.
+            </p>
+            <textarea
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              rows={9}
+              placeholder="Colle ici le texte de l'offre…"
+              className="input h-auto w-full py-2 resize-y text-[13px] leading-snug"
+              autoFocus
+            />
+            <input
+              type="text"
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              placeholder="Lien de l'offre (optionnel)"
+              className="input h-9 w-full mt-2"
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setManualOpen(false)} className="btn-ghost btn-sm" disabled={manualBusy}>
+                Annuler
+              </button>
+              <button onClick={submitManual} className="btn-primary btn-sm" disabled={manualBusy}>
+                {manualBusy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                {manualBusy ? "Création…" : "Créer l'offre"}
+              </button>
             </div>
           </div>
         </div>

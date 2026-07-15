@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 Source = Literal[
     "la_bonne_alternance", "indeed", "wttj", "hellowork", "apec",
-    "linkedin", "linkedin_manual",
+    "linkedin", "linkedin_manual", "manual",
 ]
 
 

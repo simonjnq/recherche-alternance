@@ -87,6 +87,16 @@ export function listOffers(params: ListOffersParams = {}): Promise<Offer[]> {
   return request<Offer[]>("/offers", { params: { limit: 500, ...params } });
 }
 
+export function addManualOffer(
+  text: string,
+  url?: string
+): Promise<{ ok: boolean; offer_id: number | null; duplicate: boolean }> {
+  return request<{ ok: boolean; offer_id: number | null; duplicate: boolean }>(
+    "/offers/manual",
+    { method: "POST", body: JSON.stringify({ text, url: url || "" }) }
+  );
+}
+
 export function getOffer(id: number): Promise<OfferDetail> {
   return request<OfferDetail>(`/offers/${id}`);
 }
