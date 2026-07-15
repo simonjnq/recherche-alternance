@@ -169,19 +169,25 @@ Objet : Candidature au poste de [Titre du poste exact] en alternance
 
 Madame, Monsieur,
 
-[Para 1] Accroche — PREMIÈRE PHRASE percutante, sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" sont INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'offre (une mission citée, le produit, le secteur, une techno nommée) en réutilisant le vocabulaire exact de l'annonce. Montre que tu as lu CETTE offre, pas une autre. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
+[INTRODUCTION — le pourquoi EUX] PREMIÈRE PHRASE percutante, sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'entreprise ou de l'offre (une mission citée, le produit, une valeur affichée, une techno nommée) qui prouve que tu as lu CETTE offre. Réutilise le vocabulaire exact de l'annonce. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
 
-[Para 2] Preuve du fit : aligne les compétences clés de l'offre avec des preuves concrètes et CHIFFRÉES (projet nommé + résultat mesurable, outil maîtrisé + usage réel). "J'ai fait X qui a donné Y" plutôt que "je maîtrise X". Mire le vocabulaire/stack de l'offre. Si tu cites plusieurs expériences distinctes, SÉPARE-LES en paragraphes courts distincts (une expérience = un paragraphe) — c'est plus lisible et permet d'en valoriser davantage.
+[VOUS — leurs besoins] Montre que tu as compris ce que le poste exige : reprends 2-3 attentes/compétences clés de l'offre (ses mots-clés, ses priorités) et amène l'idée que ton profil y répond. Centré sur EUX, pas encore sur toi.
 
-[Para 3] Projection + CTA : ce que le candidat veut concrètement apprendre/construire à ce poste (relié à une mission de l'offre), puis une phrase de clôture courte et naturelle proposant un échange. Pas de formule toute faite.
+[MOI — tes preuves] Ton parcours au service de ces besoins : expériences et réalisations CHIFFRÉES ("j'ai fait X qui a donné Y" plutôt que "je maîtrise X"), outils/projets RÉELS nommés. Si tu cites plusieurs expériences distinctes, SÉPARE-LES en paragraphes courts (une expérience = un paragraphe).
+
+[NOUS — le lien] Fais la jonction : comment ton profil sert concrètement LEURS objectifs, et en quoi ta façon de travailler / tes valeurs collent à leur mission ou culture. Dis ce que tu veux y construire. Évite "cette étape est importante pour ma carrière" (trop centré sur soi).
+
+[CONCLUSION] Enthousiasme sincère + disponibilité pour un échange/entretien + mention que le CV est joint. Court, naturel, sans formule creuse.
 
 Cordialement,
 [Nom du candidat]
 
 RÈGLES IMPÉRATIVES
 - ~320-360 mots : développe assez pour bien remplir, sans jamais être creux ni délayer.
-- Phrases courtes, voix active. Le corps peut faire 3 à 5 paragraphes (accroche, une ou plusieurs preuves séparées par expérience, projection + CTA).
+- Phrases courtes, voix active. Corps en 4-5 paragraphes suivant Introduction / Vous / Moi / Nous / Conclusion (les blocs Vous et Moi peuvent s'enchaîner naturellement).
 - CONCRET > générique : chaque phrase doit pouvoir être fausse pour un autre candidat ou une autre boîte. Si une phrase marcherait pour n'importe qui, supprime-la.
+- Ton adapté à la structure : plus direct/dynamique pour une startup, un peu plus formel pour un grand groupe. Naturel et humain, jamais robotique.
+- Pas d'accumulation d'adjectifs ("rigoureux, dynamique, motivé") : prouve par un fait à la place. Orthographe irréprochable.
 - Réutilise les mots-clés/missions exacts de l'offre (effet miroir), sans copier-coller de paragraphes entiers.
 - Commence le corps par la formule d'appel « Madame, Monsieur, » (sur sa propre ligne, avant le paragraphe 1).
 - N'utilise JAMAIS de tiret long (— em ou – en), nulle part : remplace par une virgule ou « : ».
