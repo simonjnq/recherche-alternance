@@ -16,13 +16,27 @@ Tout tourne sur ta machine. Aucune donnée n'est envoyée ailleurs que vers l'AP
 
 ## Fonctionnalités
 
+**Trouver les offres**
 - **Scraping multi-sources** : La Bonne Alternance (API v3), Indeed, Welcome to the Jungle,
   HelloWork, APEC, LinkedIn (endpoint public invité, sans login). Pagination + tri par date.
+- **Coller une offre** ratée par le scraping : tu colles le texte, l'IA en extrait les champs,
+  la score et l'ajoute à la liste comme n'importe quelle offre.
 - **Filtres avant scoring** (économisent les appels LLM) : type de contrat, pertinence par
-  domaine, blocage d'entreprises (écoles/CFA), déduplication.
+  domaine (réglable), blocage d'entreprises (écoles/CFA), déduplication.
 - **Scoring IA** (Claude) : score 0-100, compétences extraites, points d'attention.
-- **Génération CV + lettre** adaptés à l'offre, **à la demande** (pour maîtriser le coût).
+
+**Générer & améliorer la candidature**
+- **CV + lettre adaptés** à l'offre, **à la demande** (pour maîtriser le coût). Le CV puise dans
+  **TOUS tes CV** uploadés (profils fusionnés) — pas de « CV par défaut ».
+- **Lettre en pipeline multi-agents** : analyse recruteur de l'offre → rédaction structurée
+  (Introduction / Vous / Moi / Nous / Conclusion) → relecture experte.
+- **Agent recruteur** dans l'éditeur : verdict (entretien / mitigé / non), score, forces,
+  faiblesses et **corrections cochables** — applique-les au CV **ou** à la lettre séparément.
+- **Consignes permanentes** : tes retours récurrents (mémorisés) injectés à chaque génération
+  et édition IA ; journal des instructions pour repérer les récurrences.
 - **Éditeur CV visuel** (WYSIWYG, densité, gabarits de style) + export PDF.
+
+**Suivre**
 - **Board de suivi Kanban** : À postuler → Postulé → Entretien → Retenu / Non retenu, avec
   dates, relances, notes, checklist, taux de réponse, export CSV.
 - **Vue Stats**, mode sombre, raccourcis clavier, sélection multiple, comparateur d'offres.
