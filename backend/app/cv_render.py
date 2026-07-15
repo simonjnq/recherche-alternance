@@ -303,7 +303,7 @@ RENDER_LIMITS = {
     "tools": 99,
     "languages": 4,
     "experiences": 4,
-    "bullets_per_exp": 3,
+    "bullets_per_exp": 6,
     "projects_pedagogical": 2,
     "projects_personal": 2,
     "summary_chars": 600,

@@ -268,12 +268,12 @@ CAPS DURS DE CONTENU (à NE PAS dépasser — sinon le CV déborde)
 - Stack & Outils : tous les outils pertinents, mots-clés courts séparés par virgule.
 - Langues : 3 max.
 - Formations : 1-2 max.
-- Expériences : 3 max (4 si le candidat n'a que ça). Garde les plus pertinentes pour l'offre.
-- Bullets par expérience : 3 max, **≤ 14 mots chacun**. Verbe d'action en premier, résultat ou outil concret en second. Pas de bullets génériques.
+- Expériences : 3 à 4, les plus pertinentes pour l'offre.
+- Bullets par expérience : 3 à 5 SELON LA PLACE DISPONIBLE (vise 4-5 si la page n'est pas pleine), **≤ 20 mots chacun**. Action + résultat/outil concret. VARIE les débuts de bullets — ne commence pas systématiquement par un participe passé (verbe en -é). Pas de bullets génériques.
 - Projets pédagogiques : 2 max. Description ≤ 18 mots.
 - Projets personnels : 2 max. Description ≤ 18 mots.
 - Intro italique : 1 phrase, 15-25 mots max.
-- REMPLISSAGE VERTICAL : la sidebar et le main doivent OCCUPER toute la hauteur A4, sans jamais laisser un gros trou visible entre deux sections. L'aération passe par les micro-espacements (line-height bullets, gap bullets, padding cards, gap cards, padding intro), JAMAIS par un gros margin/gap entre deux sections. NE CHANGE PAS la structure (wrappers `.head` / `.sections` / `.top` / `.flow`).
+- REMPLISSAGE VERTICAL : la page A4 doit être BIEN REMPLIE. S'il reste de la place, PRIVILÉGIE davantage de contenu réel — développe les bullets (contexte + résultat concret), ajoute une expérience/un projet pertinent, allonge les descriptions — PLUTÔT que de gonfler les espacements. Ne laisse jamais un gros trou. Ne change pas la structure (wrappers `.head` / `.sections` / `.top` / `.flow`).
 - DENSITÉ : choisis la classe du <body> selon le volume de contenu :
   - `density-compact` → beaucoup de contenu (≥3 expériences avec ≥4 bullets chacune, plusieurs projets). Objectif : faire tenir sans déborder.
   - `density-normal` → volume moyen (2-3 expériences, 3-5 bullets, 1-2 projets). Valeur par défaut.

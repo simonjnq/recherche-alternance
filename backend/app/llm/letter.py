@@ -171,7 +171,7 @@ Madame, Monsieur,
 
 [Para 1] Accroche — PREMIÈRE PHRASE percutante, sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" sont INTERDITS en ouverture). Accroche sur un élément CONCRET et précis de l'offre (une mission citée, le produit, le secteur, une techno nommée) en réutilisant le vocabulaire exact de l'annonce. Montre que tu as lu CETTE offre, pas une autre. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
 
-[Para 2] Preuve du fit : aligne 2-3 compétences clés de l'offre avec UNE preuve concrète et CHIFFRÉE chacune (projet nommé + résultat mesurable, outil maîtrisé + usage réel). "J'ai fait X qui a donné Y" plutôt que "je maîtrise X". Mire le vocabulaire/stack de l'offre. 2-3 preuves fortes, jamais une liste de 8.
+[Para 2] Preuve du fit : aligne les compétences clés de l'offre avec des preuves concrètes et CHIFFRÉES (projet nommé + résultat mesurable, outil maîtrisé + usage réel). "J'ai fait X qui a donné Y" plutôt que "je maîtrise X". Mire le vocabulaire/stack de l'offre. Si tu cites plusieurs expériences distinctes, SÉPARE-LES en paragraphes courts distincts (une expérience = un paragraphe) — c'est plus lisible et permet d'en valoriser davantage.
 
 [Para 3] Projection + CTA : ce que le candidat veut concrètement apprendre/construire à ce poste (relié à une mission de l'offre), puis une phrase de clôture courte et naturelle proposant un échange. Pas de formule toute faite.
 
@@ -179,8 +179,8 @@ Cordialement,
 [Nom du candidat]
 
 RÈGLES IMPÉRATIVES
-- ~280 mots TOTAL (3 paragraphes). Compte serré, jamais plus de 320.
-- Une seule IDÉE par paragraphe. Phrases courtes. Voix active.
+- ~320-360 mots : développe assez pour bien remplir, sans jamais être creux ni délayer.
+- Phrases courtes, voix active. Le corps peut faire 3 à 5 paragraphes (accroche, une ou plusieurs preuves séparées par expérience, projection + CTA).
 - CONCRET > générique : chaque phrase doit pouvoir être fausse pour un autre candidat ou une autre boîte. Si une phrase marcherait pour n'importe qui, supprime-la.
 - Réutilise les mots-clés/missions exacts de l'offre (effet miroir), sans copier-coller de paragraphes entiers.
 - Commence le corps par la formule d'appel « Madame, Monsieur, » (sur sa propre ligne, avant le paragraphe 1).
@@ -333,7 +333,7 @@ POLISH_SYSTEM = """Tu es un relecteur senior. On te donne une lettre de motivati
 2. Test du "n'importe qui" : toute phrase qui marcherait pour un autre candidat OU une autre entreprise → réécris-la pour la rendre spécifique, ou supprime-la.
 3. La 1ʳᵉ phrase doit accrocher sur un élément concret de l'offre, sans formule d'intro ("Je me permets", "Actuellement étudiant" interdits en ouverture).
 4. Privilégier les preuves chiffrées et le vocabulaire de l'offre ; supprimer les adjectifs vides (dynamique, motivé, rigoureux…).
-5. Raccourcir : ~280 mots dans le corps (hors en-tête/objet/signature). Une idée par paragraphe, voix active.
+5. Longueur : ~320-360 mots dans le corps (hors en-tête/objet/signature). Développe assez pour bien remplir, sépare les expériences en paragraphes distincts, sans jamais délayer.
 6. Ne PAS changer les faits, noms, dates, chiffres, l'objet, ni la structure en-tête/signature. Ne JAMAIS inventer.
 7. Ne JAMAIS introduire de placeholder entre crochets. Garde le français et le registre.
 
