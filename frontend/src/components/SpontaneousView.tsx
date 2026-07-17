@@ -176,7 +176,7 @@ export function SpontaneousView({ onCreated }: Props) {
             onClick={() => onCreated(result.offerId)}
             className="btn-primary btn-sm mt-3"
           >
-            Voir dans mes favoris
+            Ouvrir la candidature
           </button>
         </div>
       )}

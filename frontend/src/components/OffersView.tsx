@@ -11,6 +11,7 @@ interface Props {
   favoritesOnly: boolean;
   refreshKey: number;
   onEdit: (offerId: number) => void;
+  onOpenFull: (offerId: number) => void;
 }
 
 const SCORE_OPTIONS = [
@@ -20,7 +21,7 @@ const SCORE_OPTIONS = [
   { value: 85, label: "≥ 85" },
 ];
 
-export function OffersView({ favoritesOnly, refreshKey, onEdit }: Props) {
+export function OffersView({ favoritesOnly, refreshKey, onEdit, onOpenFull }: Props) {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -402,6 +403,7 @@ export function OffersView({ favoritesOnly, refreshKey, onEdit }: Props) {
           onClose={() => setSelectedId(null)}
           onChanged={refreshList}
           onEdit={onEdit}
+          onOpenFull={onOpenFull}
         />
       )}
 

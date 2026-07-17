@@ -5,6 +5,7 @@ import { OffersView } from "./components/OffersView";
 import { FavoritesBoard } from "./components/FavoritesBoard";
 import { StatsView } from "./components/StatsView";
 import { CVsView } from "./components/CVsView";
+import { OfferPage } from "./components/OfferPage";
 import { SpontaneousView } from "./components/SpontaneousView";
 import { SettingsView } from "./components/SettingsView";
 import { EditorView } from "./components/EditorView";
@@ -24,6 +25,7 @@ export default function App() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [running, setRunning] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [viewingOfferId, setViewingOfferId] = useState<number | null>(null);
   const [editingOfferId, setEditingOfferId] = useState<number | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">(
     () => (localStorage.getItem("theme") as "light" | "dark") || "light"
@@ -115,6 +117,16 @@ export default function App() {
             offerId={editingOfferId}
             onBack={() => setEditingOfferId(null)}
           />
+        ) : viewingOfferId !== null ? (
+          <OfferPage
+            offerId={viewingOfferId}
+            onBack={() => setViewingOfferId(null)}
+            onChanged={() => setRefreshKey((k) => k + 1)}
+            onEdit={(id) => {
+              setViewingOfferId(null);
+              setEditingOfferId(id);
+            }}
+          />
         ) : (
           <>
             <ProgressBar progress={progress} running={running} />
@@ -124,19 +136,21 @@ export default function App() {
                   favoritesOnly={false}
                   refreshKey={refreshKey}
                   onEdit={setEditingOfferId}
+                  onOpenFull={setViewingOfferId}
                 />
               )}
               {view === "favorites" && (
                 <FavoritesBoard
                   refreshKey={refreshKey}
                   onEdit={setEditingOfferId}
+                  onOpenFull={setViewingOfferId}
                 />
               )}
               {view === "spontaneous" && (
                 <SpontaneousView
-                  onCreated={() => {
+                  onCreated={(id) => {
                     setRefreshKey((k) => k + 1);
-                    setView("favorites");
+                    setViewingOfferId(id);
                   }}
                 />
               )}

@@ -9,6 +9,7 @@ import { OfferDetail } from "./OfferDetail";
 interface Props {
   refreshKey: number;
   onEdit: (offerId: number) => void;
+  onOpenFull: (offerId: number) => void;
 }
 
 function statusOf(o: Offer): ApplicationStatus {
@@ -23,7 +24,7 @@ function isOverdue(o: Offer): boolean {
   return o.follow_up_at <= today;
 }
 
-export function FavoritesBoard({ refreshKey, onEdit }: Props) {
+export function FavoritesBoard({ refreshKey, onEdit, onOpenFull }: Props) {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -240,6 +241,7 @@ export function FavoritesBoard({ refreshKey, onEdit }: Props) {
           onClose={() => setSelectedId(null)}
           onChanged={load}
           onEdit={onEdit}
+          onOpenFull={onOpenFull}
         />
       )}
     </div>
