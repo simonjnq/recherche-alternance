@@ -71,6 +71,15 @@ CREATE TABLE IF NOT EXISTS search_runs (
     status TEXT
 );
 
+CREATE TABLE IF NOT EXISTS companies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_key TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    website TEXT,
+    data_json TEXT NOT NULL,
+    researched_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_offers_score ON offers(score DESC);
 CREATE INDEX IF NOT EXISTS idx_offers_source ON offers(source);
 CREATE INDEX IF NOT EXISTS idx_offers_favorite ON offers(is_favorite);
@@ -258,7 +267,44 @@ async def mark_seen(db: aiosqlite.Connection, offer_id: int) -> None:
     await db.commit()
 
 
-_BACKUP_TABLES = ("offers", "cvs", "generated_docs", "search_runs")
+# ---------------------------------------------------------------------------
+# Entreprises (cache des recherches web — cf. llm/company_research.py)
+# ---------------------------------------------------------------------------
+
+async def get_company(db: aiosqlite.Connection, name_key: str) -> Optional[dict[str, Any]]:
+    cur = await db.execute(
+        "SELECT data_json, researched_at FROM companies WHERE name_key=?", (name_key,)
+    )
+    row = await cur.fetchone()
+    if not row:
+        return None
+    data = json.loads(row[0])
+    data["researched_at"] = row[1]
+    return data
+
+
+async def upsert_company(
+    db: aiosqlite.Connection, name_key: str, name: str,
+    website: Optional[str], data: dict[str, Any],
+) -> None:
+    await db.execute(
+        """INSERT INTO companies (name_key, name, website, data_json, researched_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(name_key) DO UPDATE SET
+             name=excluded.name, website=excluded.website,
+             data_json=excluded.data_json, researched_at=excluded.researched_at""",
+        (name_key, name, website, json.dumps(data, ensure_ascii=False),
+         datetime.utcnow().isoformat()),
+    )
+    await db.commit()
+
+
+async def delete_company(db: aiosqlite.Connection, name_key: str) -> None:
+    await db.execute("DELETE FROM companies WHERE name_key=?", (name_key,))
+    await db.commit()
+
+
+_BACKUP_TABLES = ("offers", "cvs", "generated_docs", "search_runs", "companies")
 
 
 async def export_all(db: aiosqlite.Connection) -> dict[str, Any]:

@@ -16,6 +16,7 @@ from ..llm.cv_profile import profile_to_text
 from ..llm.cv_to_editable import detect_style, extract_editable
 from ..llm.doc_editor import apply_instructions_to_cv, apply_instructions_to_letter
 from ..llm.client import complete, complete_json
+from ..llm.company_research import get_or_research, normalize_name
 from ..pipeline import regenerate_for_offer, regenerate_doc
 from ..render_pdf import html_to_pdf
 
@@ -256,6 +257,31 @@ async def toggle_favorite(offer_id: int, value: bool = True) -> dict:
     try:
         await dbm.set_favorite(db, offer_id, value)
         return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.get("/{offer_id}/company")
+async def offer_company(offer_id: int, refresh: bool = False) -> dict:
+    """Fiche entreprise de l'offre. Sert le cache ; ne recherche qu'au 1er appel.
+
+    À la demande et non pendant le scraping : un run ramène ~50 offres dont on en
+    écarte l'essentiel, les rechercher toutes reviendrait à payer 50 recherches
+    pour en exploiter une poignée.
+    """
+    db = await dbm.connect()
+    try:
+        offer = await dbm.get_offer(db, offer_id)
+        if not offer:
+            raise HTTPException(404, "Offre introuvable")
+        if not (offer.company or "").strip():
+            raise HTTPException(400, "Cette offre n'a pas de nom d'entreprise")
+        data = await get_or_research(
+            db, offer.company, offer_url=offer.url,
+            context=f"{offer.title}\n{(offer.description or '')[:1000]}",
+            force=refresh,
+        )
+        return data
     finally:
         await db.close()
 

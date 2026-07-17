@@ -56,6 +56,81 @@ async def complete(
     return "".join(parts)
 
 
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=20))
+async def complete_with_search(
+    system: str | list[dict[str, Any]],
+    user: str,
+    max_tokens: int = 4000,
+    max_searches: int = 5,
+    model: Optional[str] = None,
+) -> tuple[str, list[str]]:
+    """Appel avec recherche web (outil serveur Anthropic). Renvoie (texte, sources).
+
+    Coûteux : chaque recherche est facturée en plus des tokens. Réservé aux
+    chemins qui passent par un cache (cf. company_research), jamais en boucle.
+    Timeout relevé : plusieurs allers-retours de recherche dépassent les 90 s
+    du client par défaut.
+    """
+    sys_param = system if isinstance(system, list) else [{"type": "text", "text": system}]
+    resp = await client().with_options(timeout=300.0).messages.create(
+        model=model or ANTHROPIC_MODEL,
+        max_tokens=max_tokens,
+        system=sys_param,
+        messages=[{"role": "user", "content": user}],
+        tools=[{
+            "type": "web_search_20250305",
+            "name": "web_search",
+            "max_uses": max_searches,
+        }],
+    )
+    parts: list[str] = []
+    sources: list[str] = []
+
+    def add_source(url: Optional[str], title: Optional[str] = None) -> None:
+        if url and url not in sources:
+            sources.append(url)
+
+    for block in resp.content:
+        # NB : le SDK désérialise TOUS les blocs en TextBlock, y compris
+        # `server_tool_use` et `web_search_tool_result` dont `.text` vaut None.
+        # On dispatche donc sur le champ `type`, jamais sur la classe, et on lit
+        # le contenu via model_dump() : les sous-objets arrivent en dicts simples,
+        # donc getattr() dessus renverrait silencieusement None.
+        d = block.model_dump() if hasattr(block, "model_dump") else dict(block)
+        btype = d.get("type")
+        if btype == "text":
+            if d.get("text"):
+                parts.append(d["text"])
+            for cit in (d.get("citations") or []):
+                if isinstance(cit, dict):
+                    add_source(cit.get("url"), cit.get("title"))
+        elif btype == "web_search_tool_result":
+            content = d.get("content")
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict):
+                        add_source(item.get("url"), item.get("title"))
+    return "".join(parts), sources
+
+
+def extract_json(text: str) -> dict[str, Any]:
+    """Extrait un objet JSON d'une réponse LLM (tolère les fences markdown)."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.rsplit("```", 1)[0].strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start, end = text.find("{"), text.rfind("}")
+        if start != -1 and end != -1:
+            return json.loads(text[start : end + 1])
+        logger.error("LLM JSON invalide: %s", text[:500])
+        raise
+
+
 async def complete_json(
     system: str | list[dict[str, Any]],
     user: str,
