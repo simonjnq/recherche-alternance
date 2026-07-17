@@ -324,6 +324,48 @@ async def toggle_favorite(offer_id: int, value: bool = True) -> dict:
         await db.close()
 
 
+EVENT_KINDS = {"applied", "relance", "reponse", "entretien", "test", "refus", "autre"}
+
+
+@router.get("/{offer_id}/events")
+async def get_events(offer_id: int) -> list[dict]:
+    db = await dbm.connect()
+    try:
+        return await dbm.list_events(db, offer_id)
+    finally:
+        await db.close()
+
+
+@router.post("/{offer_id}/events")
+async def post_event(offer_id: int, payload: dict = Body(...)) -> dict:
+    kind = (payload.get("kind") or "autre").strip()
+    at = (payload.get("at") or "").strip()
+    note = (payload.get("note") or "").strip() or None
+    if kind not in EVENT_KINDS:
+        raise HTTPException(400, f"Type inconnu. Attendu : {', '.join(sorted(EVENT_KINDS))}")
+    if not at:
+        from datetime import date as _date
+        at = _date.today().isoformat()
+    db = await dbm.connect()
+    try:
+        if not await dbm.get_offer(db, offer_id):
+            raise HTTPException(404, "Offre introuvable")
+        eid = await dbm.add_event(db, offer_id, at, kind, note)
+        return {"ok": True, "id": eid}
+    finally:
+        await db.close()
+
+
+@router.delete("/{offer_id}/events/{event_id}")
+async def remove_event(offer_id: int, event_id: int) -> dict:
+    db = await dbm.connect()
+    try:
+        await dbm.delete_event(db, event_id)
+        return {"ok": True}
+    finally:
+        await db.close()
+
+
 @router.get("/{offer_id}/interview")
 async def get_interview(offer_id: int) -> dict:
     """Fiche de prépa si elle existe déjà. Gratuit — la génération passe par POST."""

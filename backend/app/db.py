@@ -71,6 +71,24 @@ CREATE TABLE IF NOT EXISTS search_runs (
     status TEXT
 );
 
+-- Journal de candidature : ce que TU as fait et quand. Volontairement libre
+-- (pas de machine à états) : une recherche ne se déroule jamais dans l'ordre prévu.
+-- NB : le CASCADE ne se déclenche PAS (SQLite exige PRAGMA foreign_keys=ON par
+-- connexion, qu'on n'active pas — ça ferait échouer des suppressions qui passent
+-- aujourd'hui). Sans risque ici : une offre n'est jamais supprimée, seulement
+-- masquée. La contrainte reste comme documentation du lien.
+CREATE TABLE IF NOT EXISTS offer_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    offer_id INTEGER NOT NULL,
+    at TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    note TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (offer_id) REFERENCES offers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_offer ON offer_events(offer_id, at DESC);
+
 CREATE TABLE IF NOT EXISTS companies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name_key TEXT NOT NULL UNIQUE,
@@ -268,6 +286,35 @@ async def mark_seen(db: aiosqlite.Connection, offer_id: int) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Journal de candidature
+# ---------------------------------------------------------------------------
+
+async def list_events(db: aiosqlite.Connection, offer_id: int) -> list[dict[str, Any]]:
+    cur = await db.execute(
+        "SELECT id, offer_id, at, kind, note FROM offer_events "
+        "WHERE offer_id=? ORDER BY at DESC, id DESC",
+        (offer_id,),
+    )
+    return [dict(r) for r in await cur.fetchall()]
+
+
+async def add_event(
+    db: aiosqlite.Connection, offer_id: int, at: str, kind: str, note: Optional[str]
+) -> int:
+    cur = await db.execute(
+        "INSERT INTO offer_events (offer_id, at, kind, note, created_at) VALUES (?, ?, ?, ?, ?)",
+        (offer_id, at, kind, note, datetime.utcnow().isoformat()),
+    )
+    await db.commit()
+    return cur.lastrowid or 0
+
+
+async def delete_event(db: aiosqlite.Connection, event_id: int) -> None:
+    await db.execute("DELETE FROM offer_events WHERE id=?", (event_id,))
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
 # Entreprises (cache des recherches web — cf. llm/company_research.py)
 # ---------------------------------------------------------------------------
 
@@ -304,7 +351,7 @@ async def delete_company(db: aiosqlite.Connection, name_key: str) -> None:
     await db.commit()
 
 
-_BACKUP_TABLES = ("offers", "cvs", "generated_docs", "search_runs", "companies")
+_BACKUP_TABLES = ("offers", "cvs", "generated_docs", "search_runs", "companies", "offer_events")
 
 
 async def export_all(db: aiosqlite.Connection) -> dict[str, Any]:

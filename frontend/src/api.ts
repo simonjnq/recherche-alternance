@@ -1,6 +1,7 @@
 import type {
   ApplicationStatus,
   CompanyResearch,
+  EventKind,
   CV,
   CVEditable,
   CVStructured,
@@ -8,6 +9,7 @@ import type {
   CVTemplateInfo,
   Offer,
   OfferDetail,
+  OfferEvent,
   Profile,
   Progress,
   Source,
@@ -207,6 +209,25 @@ export function putGeneratedCV(id: number, html: string): Promise<void> {
     method: "PUT",
     body: JSON.stringify({ html }),
   });
+}
+
+/** Journal de candidature (ce que tu as fait et quand). */
+export function listEvents(id: number): Promise<OfferEvent[]> {
+  return request<OfferEvent[]>(`/offers/${id}/events`);
+}
+
+export function addEvent(
+  id: number,
+  ev: { kind: EventKind; at?: string; note?: string }
+): Promise<{ ok: boolean; id: number }> {
+  return request(`/offers/${id}/events`, {
+    method: "POST",
+    body: JSON.stringify(ev),
+  });
+}
+
+export function deleteEvent(id: number, eventId: number): Promise<void> {
+  return request<void>(`/offers/${id}/events/${eventId}`, { method: "DELETE" });
 }
 
 /** Fiche de prépa entretien si elle existe déjà. Gratuit. */

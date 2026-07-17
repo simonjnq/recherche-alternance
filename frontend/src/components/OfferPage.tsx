@@ -20,6 +20,8 @@ import type { OfferDetail as OfferDetailType } from "../types";
 import { SOURCE_LABEL } from "../types";
 import { CompanyCard } from "./CompanyCard";
 import { InterviewPrep } from "./InterviewPrep";
+import { OfferApplication } from "./OfferApplication";
+import { OfferTracking } from "./OfferTracking";
 import { cn, scoreColor } from "../lib/utils";
 
 interface Props {
@@ -29,13 +31,23 @@ interface Props {
   onEdit: (offerId: number) => void;
 }
 
-type Tab = "overview" | "company" | "interview";
+type Tab = "overview" | "company" | "application" | "interview" | "tracking";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "L'offre" },
   { key: "company", label: "L'entreprise" },
+  { key: "application", label: "Ma candidature" },
   { key: "interview", label: "Entretien" },
+  { key: "tracking", label: "Suivi" },
 ];
+
+function fmt(d?: string | null) {
+  if (!d) return null;
+  const dt = new Date(d);
+  return isNaN(dt.getTime())
+    ? d
+    : dt.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
 
 /** Page pleine d'une offre. Le panneau latéral fait 480 px : lisible pour un
  *  score et des badges, intenable pour une fiche entreprise ou une prépa
@@ -245,6 +257,29 @@ export function OfferPage({ offerId, onBack, onChanged, onEdit }: Props) {
             )}
 
             <section>
+              <h2 className="section-label mb-2">Infos & chronologie</h2>
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
+                {[
+                  ["Source", SOURCE_LABEL[offer.source]],
+                  ["Contrat", offer.contract],
+                  ["Lieu", offer.location],
+                  ["Salaire", offer.salary],
+                  ["Publiée le", fmt(offer.posted_at)],
+                  ["Trouvée le", fmt(offer.scraped_at)],
+                  ["Scorée le", fmt(offer.scored_at)],
+                  ["Candidature générée", docs ? fmt(docs.generated_at) || "oui" : "pas encore"],
+                ]
+                  .filter(([, v]) => v)
+                  .map(([k, v]) => (
+                    <div key={k as string}>
+                      <dt className="text-label-sm text-on-surface-variant">{k}</dt>
+                      <dd className="text-body-md text-on-surface">{v}</dd>
+                    </div>
+                  ))}
+              </dl>
+            </section>
+
+            <section>
               <h2 className="section-label mb-2">Description</h2>
               <div className="text-body-md text-on-surface-variant leading-relaxed whitespace-pre-wrap">
                 {offer.description}
@@ -263,6 +298,20 @@ export function OfferPage({ offerId, onBack, onChanged, onEdit }: Props) {
               </p>
             )}
           </div>
+        )}
+
+        {tab === "application" && (
+          <OfferApplication offerId={offer.id} />
+        )}
+
+        {tab === "tracking" && (
+          <OfferTracking
+            offer={offer}
+            onChanged={() => {
+              reload();
+              onChanged();
+            }}
+          />
         )}
 
         {tab === "interview" && (

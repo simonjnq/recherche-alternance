@@ -74,6 +74,33 @@ export interface OfferDetail {
   docs: GeneratedDocLite | null;
 }
 
+export type EventKind =
+  | "applied"
+  | "relance"
+  | "reponse"
+  | "entretien"
+  | "test"
+  | "refus"
+  | "autre";
+
+export const EVENT_KINDS: { key: EventKind; label: string }[] = [
+  { key: "applied", label: "Candidature envoyée" },
+  { key: "relance", label: "Relance" },
+  { key: "reponse", label: "Réponse reçue" },
+  { key: "entretien", label: "Entretien" },
+  { key: "test", label: "Test technique" },
+  { key: "refus", label: "Refus" },
+  { key: "autre", label: "Autre" },
+];
+
+export interface OfferEvent {
+  id: number;
+  offer_id: number;
+  at: string;
+  kind: EventKind;
+  note?: string | null;
+}
+
 export interface CompanyNews {
   date?: string | null;
   title?: string | null;
