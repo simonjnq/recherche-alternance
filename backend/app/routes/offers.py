@@ -605,6 +605,7 @@ async def ai_bullet(offer_id: int, payload: dict = Body(...)) -> dict:
     instruction = (payload.get("instruction") or "Reformule pour mieux coller à l'offre.").strip()
     if not bullet:
         raise HTTPException(400, "Champ 'bullet' manquant")
+    instruction = _augment(instruction, "cv/ai-bullet", offer_id)
 
     db = await dbm.connect()
     try:
@@ -650,7 +651,8 @@ Règles :
 - Garde les faits factuels (chiffres, noms d'outils, dates) sauf si l'instruction demande explicitement de les retirer.
 - Aucune invention de chiffre ou de fait absent du champ ou du contexte offre fourni.
 - Pour un titre/bullet : 1 ligne max, action en premier si pertinent.
-- Pour une description / intro : 1-2 phrases max sauf instruction contraire.
+- Pour une description : 1-2 phrases max sauf instruction contraire.
+- Pour la phrase d'accroche / intro du CV : 35 MOTS MAXIMUM, et elle doit dire ce que le candidat cherche (développer ses compétences dans un nouvel environnement stimulant), pas seulement ce qu'il a fait.
 - Jamais d'emoji, jamais de placeholder [crochets]."""
 
 
@@ -679,6 +681,7 @@ async def ai_block(offer_id: int, payload: dict = Body(...)) -> dict:
 
     value_line = value if value else "(vide — créer un contenu adapté)"
     instruction_line = instruction or "Améliore ce champ pour mieux coller à l'offre."
+    instruction_line = _augment(instruction_line, f"cv/ai-block:{path or 'libre'}", offer_id)
     user = f"""{offer_ctx}
 
 Champ : {path or 'libre'}

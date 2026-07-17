@@ -60,6 +60,15 @@ DEFAULT_FORBIDDEN_PHRASES = [
     "depuis mon plus jeune âge",
     "votre renommée",
     "rejoindre vos équipes",
+    # Clôtures administratives : signalées 5 fois comme « pas humaines ».
+    "mon cv est joint",
+    "mon cv détaille",
+    "mon cv joint",
+    "à votre convenance",
+    "dans l'attente de votre retour",
+    "je me tiens à votre disposition",
+    "je reste à votre disposition",
+    "je reste disponible pour",
 ]
 
 STYLE_GUIDANCE = {
@@ -169,7 +178,7 @@ Objet : Candidature au poste de [Titre du poste exact] en alternance
 
 Madame, Monsieur,
 
-[INTRODUCTION — le pourquoi EUX] PREMIÈRE PHRASE percutante — pense « bande-annonce » : elle doit donner envie de lire la suite. Sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" INTERDITS en ouverture). Choisis l'angle d'accroche le plus pertinent et SINCÈRE parmi : (a) une expérience/réalisation passée qui colle directement au poste, (b) un alignement fort avec leur mission/valeurs, (c) un fait concret de l'entreprise (projet, produit, innovation récente, techno nommée), (d) une mini-anecdote concrète. Réutilise le vocabulaire exact de l'annonce et dis-le avec TA voix (simple, authentique), jamais artificiel. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
+[INTRODUCTION — le pourquoi EUX] PREMIÈRE PHRASE percutante — pense « bande-annonce » : elle doit donner envie de lire la suite. Sans formule d'introduction ("Je me permets…", "Actuellement étudiant…" INTERDITS en ouverture). N'ouvre JAMAIS sur une note négative ou péjorative (un problème, un manque, un constat déprimant du type « le support client est trop souvent un centre de coût ») : ouvre sur du POSITIF et du concret — ce qu'ils construisent, ce qui marche chez eux, ce qui donne envie. Choisis l'angle d'accroche le plus pertinent et SINCÈRE parmi : (a) une expérience/réalisation passée qui colle directement au poste, (b) un alignement fort avec leur mission/valeurs, (c) un fait concret de l'entreprise (projet, produit, innovation récente, techno nommée), (d) une mini-anecdote concrète. Réutilise le vocabulaire exact de l'annonce et dis-le avec TA voix (simple, authentique), jamais artificiel. Si l'entreprise est inconnue, accroche sur la mission cœur du poste.
 
 [VOUS — leurs besoins] Montre que tu as compris ce que le poste exige : reprends 2-3 attentes/compétences clés de l'offre (ses mots-clés, ses priorités) et amène l'idée que ton profil y répond. Centré sur EUX, pas encore sur toi.
 
@@ -177,7 +186,7 @@ Madame, Monsieur,
 
 [NOUS — le lien] Fais la jonction : comment ton profil sert concrètement LEURS objectifs, et en quoi ta façon de travailler / tes valeurs collent à leur mission ou culture. Si l'entreprise affiche une mission sociale/environnementale ou des valeurs fortes (impact, RSE, durabilité…), montre un alignement SINCÈRE et concret avec — pas seulement la technique. Dis ce que tu veux y construire. Évite "cette étape est importante pour ma carrière" (trop centré sur soi).
 
-[CONCLUSION] Enthousiasme sincère + disponibilité pour un échange/entretien + mention que le CV est joint. Court, naturel, sans formule creuse.
+[CONCLUSION] Clôture HUMAINE, qui sonne comme une vraie personne. Une ou deux phrases, une envie sincère d'échanger. INTERDIT ABSOLU : « Mon CV est joint », « Mon CV détaille… », « je reste disponible à votre convenance », « dans l'attente de votre retour », « je me tiens à votre disposition » et toute formule administrative de ce type. Ne mentionne PAS que le CV est joint (ça se voit). Termine sur quelque chose de vivant et personnel, pas sur du protocole.
 
 Cordialement,
 [Nom du candidat]

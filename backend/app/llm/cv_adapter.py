@@ -189,16 +189,16 @@ TEMPLATE_REFERENCE = """<!DOCTYPE html>
         <h2>Hard Skills</h2>
         <div class="tag-rows">
           <div class="tag-row"><span class="tag">Skill 1</span><span class="tag">Skill 2</span></div>
-          <!-- max 4 lignes de 2 tags -->
+          <!-- autant de lignes de 2 tags que le profil en contient de pertinents -->
         </div>
       </section>
       <section>
         <h2>Soft Skills</h2>
-        <ul class="soft-list"><li>Soft 1</li><li>Soft 2</li><li>Soft 3</li></ul>
+        <ul class="soft-list"><li>Soft 1</li><li>Soft 2</li><li>Soft 3</li><li>Soft 4</li><li>Soft 5</li><li>Soft 6</li></ul>
       </section>
       <section>
         <h2>Stack &amp; Outils</h2>
-        <ul class="stack-list"><li>Outil 1, Outil 2</li></ul>
+        <ul class="stack-list"><li>Outil 1, Outil 2, Outil 3, Outil 4</li><li>Outil 5, Outil 6, Outil 7</li></ul>
       </section>
       <section>
         <h2>Langues</h2>
@@ -264,15 +264,15 @@ SYSTEM_RULES = """RÈGLES DE FORMAT (impératives)
 
 CAPS DURS DE CONTENU (à NE PAS dépasser — sinon le CV déborde)
 - Hard Skills : affiche TOUTES les compétences techniques pertinentes pour l'offre présentes dans le profil (PAS de limite de nombre). Chacune ≤ 22 caractères, UN concept par tag ("n8n", "RAG", "LLM Ops", PAS "Automatisation n8n / Zapier / Make"). Coupe en plusieurs tags si besoin.
-- Soft Skills : tous les soft skills pertinents (reste concis, mots simples).
-- Stack & Outils : tous les outils pertinents, mots-clés courts séparés par virgule.
+- Soft Skills : 5 à 7 soft skills, CHOISIS ET FORMULÉS EN FONCTION DE L'OFFRE (ceux que ce poste précis réclame, pas une liste passe-partout). Mots simples. Ne t'arrête pas à 3 : la colonne a la place, remplis-la.
+- Stack & Outils : TOUS les outils pertinents du profil pour cette offre (vise 6 à 10, sur plusieurs lignes si besoin), mots-clés courts séparés par virgule, les plus demandés par l'offre en premier. Ne t'arrête pas à 2 ou 3.
 - Langues : 3 max.
 - Formations : 1-2 max.
 - Expériences : 3 à 4, les plus pertinentes pour l'offre.
 - Bullets par expérience : 3 à 5 SELON LA PLACE DISPONIBLE (vise 4-5 si la page n'est pas pleine), **≤ 20 mots chacun**. Action + résultat/outil concret. VARIE les débuts de bullets — ne commence pas systématiquement par un participe passé (verbe en -é). Pas de bullets génériques.
 - Projets pédagogiques : 2 max. Description ≤ 18 mots.
 - Projets personnels : 2 max. Description ≤ 18 mots.
-- Intro italique = vraie PHRASE D'ACCROCHE (2-3 lignes) : métier/positionnement + spécialité qui te différencie + UNE réalisation concrète/chiffrée + valeur ajoutée, en reprenant 3-4 mots-clés de l'offre. Concis et impactant, pas de « je suis motivé et dynamique ».
+- Intro italique = vraie PHRASE D'ACCROCHE, **35 MOTS MAXIMUM** (compte-les) : métier/positionnement + spécialité qui te différencie + UNE réalisation concrète/chiffrée + CE QUE LE CANDIDAT RECHERCHE, en reprenant 3-4 mots-clés de l'offre. Le « ce que je recherche » est OBLIGATOIRE et ne doit jamais manquer : développer ses compétences dans un nouvel environnement stimulant/challengeant, formulé naturellement et rattaché à cette offre précise (pas une formule copiée telle quelle). Concis et impactant, pas de « je suis motivé et dynamique ».
 - REMPLISSAGE VERTICAL : la page A4 doit être BIEN REMPLIE. S'il reste de la place, PRIVILÉGIE davantage de contenu réel — développe les bullets (contexte + résultat concret), ajoute une expérience/un projet pertinent, allonge les descriptions — PLUTÔT que de gonfler les espacements. Ne laisse jamais un gros trou. Ne change pas la structure (wrappers `.head` / `.sections` / `.top` / `.flow`).
 - DENSITÉ : choisis la classe du <body> selon le volume de contenu :
   - `density-compact` → beaucoup de contenu (≥3 expériences avec ≥4 bullets chacune, plusieurs projets). Objectif : faire tenir sans déborder.
@@ -288,7 +288,7 @@ RÈGLES DE CONTENU
 - Les faits factuels (dates, noms d'entreprises, diplômes, écoles, villes, nom, email, téléphone, LinkedIn) restent INCHANGÉS — tu n'inventes rien.
 - Si une section n'a pas de contenu dans le CV source (ex: pas de projets personnels), SUPPRIME complètement la balise <section> correspondante. Ne mets jamais de texte placeholder.
 - Si pas de photo dans le CV source : mets les initiales dans `.photo` (2 lettres majuscules). Si une image URL ou un data:image est fourni dans le CV source, injecte-la via `style="background-image:url(…)"`.
-- Intro : phrase d'accroche adaptée à l'offre (2-3 lignes) — cf. règle « Intro italique » ci-dessus (métier + spécialité + réalisation chiffrée + mots-clés de l'offre).
+- Intro : phrase d'accroche adaptée à l'offre, 35 mots max — cf. règle « Intro italique » ci-dessus (métier + spécialité + réalisation chiffrée + ce que le candidat recherche + mots-clés de l'offre).
 
 AVANT DE RENDRE, CHECKLIST IMPLICITE
 - Pas d'overflow sidebar ni main (si doute, raccourcis bullets ou skills).
