@@ -209,6 +209,24 @@ export function putGeneratedCV(id: number, html: string): Promise<void> {
   });
 }
 
+/** Fiche de prépa entretien si elle existe déjà. Gratuit. */
+export function getInterview(
+  id: number
+): Promise<{ markdown: string; generated_at: number } | { missing: true }> {
+  return request(`/offers/${id}/interview`);
+}
+
+/** Génère (ou refait) la prépa entretien (~1 min). */
+export function makeInterview(
+  id: number,
+  notes?: string
+): Promise<{ markdown: string; company_known: boolean }> {
+  return request(`/offers/${id}/interview`, {
+    method: "POST",
+    body: JSON.stringify(notes ? { notes } : {}),
+  });
+}
+
 /** Candidature spontanée : recherche la boîte, déduit le poste probable, crée
  *  l'offre (source=spontaneous) et la met en favori. */
 export function createSpontaneous(payload: {

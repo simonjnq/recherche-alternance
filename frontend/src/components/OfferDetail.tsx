@@ -34,6 +34,7 @@ import {
   updateOfferTracking,
   type OfferTracking,
 } from "../api";
+import { InterviewPrep } from "./InterviewPrep";
 import type { CompanyResearch, OfferDetail as OfferDetailType } from "../types";
 import { SOURCE_LABEL } from "../types";
 import { cn, scoreColor } from "../lib/utils";
@@ -413,6 +414,8 @@ export function OfferDetail({ offerId, onClose, onChanged, onEdit }: Props) {
         {offer.company && (
           <CompanyCard offerId={offer.id} company={offer.company} />
         )}
+
+        <InterviewPrep offerId={offer.id} title={offer.title} />
 
         {offer.reasoning && (
           <Section title="Analyse">

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from .. import db as dbm
+from ..config import OFFERS_DIR
 from ..cv_render import list_templates, render_cv
 from ..llm.cv_fit import fit_cv_html
 from ..llm.cv_profile import profile_to_text
@@ -321,6 +322,60 @@ async def toggle_favorite(offer_id: int, value: bool = True) -> dict:
         return {"ok": True}
     finally:
         await db.close()
+
+
+@router.get("/{offer_id}/interview")
+async def get_interview(offer_id: int) -> dict:
+    """Fiche de prépa si elle existe déjà. Gratuit — la génération passe par POST."""
+    db = await dbm.connect()
+    try:
+        offer = await dbm.get_offer(db, offer_id)
+        if not offer:
+            raise HTTPException(404, "Offre introuvable")
+    finally:
+        await db.close()
+    p = OFFERS_DIR / offer.slug() / "interview.md"
+    if not p.exists():
+        return {"missing": True}
+    return {"markdown": p.read_text(), "generated_at": p.stat().st_mtime}
+
+
+@router.post("/{offer_id}/interview")
+async def make_interview(offer_id: int, payload: dict = Body(default={})) -> dict:
+    """Génère (ou régénère) la fiche de prépa entretien.
+
+    S'appuie sur la fiche entreprise SI elle est déjà en cache : on ne déclenche
+    pas une recherche facturée en douce depuis cette route. Sans fiche, la prépa
+    reste possible, elle est juste moins riche sur la boîte.
+    """
+    from ..llm.interview import prepare_interview
+    from ..llm.cv_profile import ensure_combined_profile
+
+    notes = (payload.get("notes") or "").strip() or None
+    db = await dbm.connect()
+    try:
+        offer = await dbm.get_offer(db, offer_id)
+        if not offer:
+            raise HTTPException(404, "Offre introuvable")
+        if notes:
+            notes = _augment(notes, "interview", offer_id)
+        company = None
+        if (offer.company or "").strip():
+            company = await dbm.get_company(db, normalize_name(offer.company))
+        # ensure_combined_profile renvoie (profil, html_modèle, id_modèle) : ici
+        # seul le profil agrégé de TOUS les CV nous intéresse.
+        combined, _style_html, _style_id = await ensure_combined_profile(db)
+        profile_text = profile_to_text(combined) if combined else None
+        md = await prepare_interview(
+            offer, profile_text=profile_text, company=company, extra_instructions=notes,
+        )
+    finally:
+        await db.close()
+
+    folder = OFFERS_DIR / offer.slug()
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "interview.md").write_text(md)
+    return {"markdown": md, "company_known": company is not None}
 
 
 @router.get("/{offer_id}/company")
