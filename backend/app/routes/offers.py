@@ -262,12 +262,36 @@ async def toggle_favorite(offer_id: int, value: bool = True) -> dict:
 
 
 @router.get("/{offer_id}/company")
-async def offer_company(offer_id: int, refresh: bool = False) -> dict:
-    """Fiche entreprise de l'offre. Sert le cache ; ne recherche qu'au 1er appel.
+async def offer_company(offer_id: int) -> dict:
+    """Fiche entreprise SI elle est déjà en cache. Ne recherche jamais, ne coûte rien.
 
-    À la demande et non pendant le scraping : un run ramène ~50 offres dont on en
+    Le GET est gratuit par construction : la recherche est facturée, elle ne doit
+    pas partir sur une simple ouverture d'offre. Pour la lancer → POST /research.
+    """
+    db = await dbm.connect()
+    try:
+        offer = await dbm.get_offer(db, offer_id)
+        if not offer:
+            raise HTTPException(404, "Offre introuvable")
+        name = (offer.company or "").strip()
+        if not name:
+            raise HTTPException(400, "Cette offre n'a pas de nom d'entreprise")
+        cached = await dbm.get_company(db, normalize_name(name))
+        if not cached:
+            return {"missing": True, "company": name}
+        cached["cached"] = True
+        return cached
+    finally:
+        await db.close()
+
+
+@router.post("/{offer_id}/company/research")
+async def offer_company_research(offer_id: int, refresh: bool = False) -> dict:
+    """Lance la recherche web sur l'entreprise (~50 s, facturée une fois par boîte).
+
+    À la demande et non pendant le scraping : un run ramène ~50 offres dont on
     écarte l'essentiel, les rechercher toutes reviendrait à payer 50 recherches
-    pour en exploiter une poignée.
+    pour en exploiter une poignée. `refresh=true` pour rafraîchir une fiche datée.
     """
     db = await dbm.connect()
     try:
@@ -276,12 +300,11 @@ async def offer_company(offer_id: int, refresh: bool = False) -> dict:
             raise HTTPException(404, "Offre introuvable")
         if not (offer.company or "").strip():
             raise HTTPException(400, "Cette offre n'a pas de nom d'entreprise")
-        data = await get_or_research(
+        return await get_or_research(
             db, offer.company, offer_url=offer.url,
             context=f"{offer.title}\n{(offer.description or '')[:1000]}",
             force=refresh,
         )
-        return data
     finally:
         await db.close()
 

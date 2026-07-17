@@ -73,6 +73,31 @@ export interface OfferDetail {
   docs: GeneratedDocLite | null;
 }
 
+export interface CompanyNews {
+  date?: string | null;
+  title?: string | null;
+  source?: string | null;
+}
+
+export interface CompanyResearch {
+  name: string;
+  website?: string | null;
+  one_liner?: string | null;
+  activity?: string | null;
+  size?: string | null;
+  founded?: string | null;
+  funding?: string | null;
+  ai_maturity?: string | null;
+  recent_news: CompanyNews[];
+  culture_values: string[];
+  hooks: string[];
+  watch_outs: string[];
+  confidence: "high" | "medium" | "low";
+  sources?: string[];
+  cached?: boolean;
+  researched_at?: string | null;
+}
+
 export interface CV {
   id: number;
   filename: string;

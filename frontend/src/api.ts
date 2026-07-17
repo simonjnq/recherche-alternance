@@ -1,5 +1,6 @@
 import type {
   ApplicationStatus,
+  CompanyResearch,
   CV,
   CVEditable,
   CVStructured,
@@ -206,6 +207,26 @@ export function putGeneratedCV(id: number, html: string): Promise<void> {
     method: "PUT",
     body: JSON.stringify({ html }),
   });
+}
+
+/** Fiche entreprise en cache. Gratuit et instantané ; renvoie {missing:true} si
+ *  la boîte n'a jamais été recherchée. */
+export function getCompany(
+  id: number
+): Promise<CompanyResearch | { missing: true; company: string }> {
+  return request(`/offers/${id}/company`);
+}
+
+/** Lance la recherche web (~50 s, facturée une fois par entreprise puis cachée).
+ *  `refresh` rafraîchit une fiche déjà connue mais datée. */
+export function researchCompany(
+  id: number,
+  refresh = false
+): Promise<CompanyResearch> {
+  return request<CompanyResearch>(
+    `/offers/${id}/company/research${refresh ? "?refresh=true" : ""}`,
+    { method: "POST" }
+  );
 }
 
 export function aiEditCV(
