@@ -209,6 +209,27 @@ export function putGeneratedCV(id: number, html: string): Promise<void> {
   });
 }
 
+/** Candidature spontanée : recherche la boîte, déduit le poste probable, crée
+ *  l'offre (source=spontaneous) et la met en favori. */
+export function createSpontaneous(payload: {
+  company: string;
+  role: string;
+  website?: string;
+  location?: string;
+  notes?: string;
+}): Promise<{
+  ok: boolean;
+  offer_id: number;
+  duplicate: boolean;
+  company_cached: boolean;
+  hypotheses: string[];
+}> {
+  return request(`/offers/spontaneous`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 /** Fiche entreprise en cache. Gratuit et instantané ; renvoie {missing:true} si
  *  la boîte n'a jamais été recherchée. */
 export function getCompany(

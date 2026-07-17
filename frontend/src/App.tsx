@@ -5,6 +5,7 @@ import { OffersView } from "./components/OffersView";
 import { FavoritesBoard } from "./components/FavoritesBoard";
 import { StatsView } from "./components/StatsView";
 import { CVsView } from "./components/CVsView";
+import { SpontaneousView } from "./components/SpontaneousView";
 import { SettingsView } from "./components/SettingsView";
 import { EditorView } from "./components/EditorView";
 import {
@@ -129,6 +130,14 @@ export default function App() {
                 <FavoritesBoard
                   refreshKey={refreshKey}
                   onEdit={setEditingOfferId}
+                />
+              )}
+              {view === "spontaneous" && (
+                <SpontaneousView
+                  onCreated={() => {
+                    setRefreshKey((k) => k + 1);
+                    setView("favorites");
+                  }}
                 />
               )}
               {view === "stats" && <StatsView refreshKey={refreshKey} />}

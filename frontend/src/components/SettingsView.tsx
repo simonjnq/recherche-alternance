@@ -11,7 +11,7 @@ import {
   uploadProfilePhoto,
 } from "../api";
 import type { LetterStyle, Profile } from "../types";
-import { LETTER_STYLES, SOURCES } from "../types";
+import { LETTER_STYLES, SCRAPER_SOURCES } from "../types";
 import { cn } from "../lib/utils";
 
 interface Props {
@@ -353,7 +353,7 @@ export function SettingsView({ profile: p, onProfileChange }: Props) {
       <section className="mb-8">
         <h2 className="font-medium mb-3">Sources</h2>
         <div className="space-y-1 bg-surface-lowest border border-outline-variant rounded-xl p-4">
-          {SOURCES.map((s) => (
+          {SCRAPER_SOURCES.map((s) => (
             <label
               key={s.key}
               className="flex items-center justify-between px-1 py-1.5 text-sm"

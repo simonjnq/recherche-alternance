@@ -157,6 +157,68 @@ async def add_manual_offer(payload: dict = Body(...)) -> dict:
         await db.close()
 
 
+@router.post("/spontaneous")
+async def add_spontaneous(payload: dict = Body(...)) -> dict:
+    """Candidature spontanée : recherche la boîte, fabrique une pseudo-offre, score.
+
+    On crée une vraie ligne `offers` (source=spontaneous) pour que TOUTE la chaîne
+    existante (génération CV/lettre, agent recruteur, éditeur, suivi) fonctionne
+    sans être dupliquée.
+    """
+    from ..models import OfferRaw
+    from ..text_clean import clean_offer_title
+    from ..llm.scoring import score_offer
+    from ..llm.spontaneous import build_spontaneous_offer, build_description
+    from ..config import load_profile
+
+    company_name = (payload.get("company") or "").strip()
+    role = (payload.get("role") or "").strip()
+    website = (payload.get("website") or "").strip() or None
+    location = (payload.get("location") or "").strip() or None
+    notes = (payload.get("notes") or "").strip() or None
+    if not company_name:
+        raise HTTPException(400, "Indique le nom de l'entreprise.")
+    if not role:
+        raise HTTPException(400, "Indique le poste que tu vises.")
+
+    profile = load_profile()
+    db = await dbm.connect()
+    try:
+        company = await get_or_research(db, company_name, website=website)
+        built = await build_spontaneous_offer(company, role, notes=notes)
+        raw = OfferRaw(
+            source="spontaneous",
+            # Pas d'URL d'offre (elle n'existe pas) : on pointe leur site, c'est
+            # ce que l'utilisateur voudra ouvrir depuis la fiche.
+            url=(company.get("website") or website or ""),
+            title=clean_offer_title(built.get("title") or role),
+            company=company.get("name") or company_name,
+            location=location or profile.get("location"),
+            contract="Alternance",
+            description=build_description(company, built),
+        )
+        oid = await dbm.upsert_offer_raw(db, raw)
+        if oid is None:
+            cur = await db.execute("SELECT id FROM offers WHERE dedup_key=?", (raw.dedup_key(),))
+            row = await cur.fetchone()
+            return {"ok": True, "offer_id": row["id"] if row else None, "duplicate": True}
+        offer = await dbm.get_offer(db, oid)
+        try:
+            scored = await score_offer(offer, profile)
+            await dbm.set_offer_scoring(db, oid, scored)
+        except Exception as e:
+            logger.warning("Scoring candidature spontanée échoué (%s)", e)
+        # Une candidature spontanée est un choix délibéré : elle part en favori.
+        await dbm.set_favorite(db, oid, True)
+        return {
+            "ok": True, "offer_id": oid, "duplicate": False,
+            "company_cached": company.get("cached", False),
+            "hypotheses": built.get("hypotheses", []),
+        }
+    finally:
+        await db.close()
+
+
 @router.get("")
 async def list_offers(
     min_score: int = 0,

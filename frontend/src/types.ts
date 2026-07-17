@@ -6,7 +6,8 @@ export type Source =
   | "apec"
   | "linkedin"
   | "linkedin_manual"
-  | "manual";
+  | "manual"
+  | "spontaneous";
 
 export interface Offer {
   id: number;
@@ -229,7 +230,13 @@ export interface CVEditable {
   style: CVStyle;
 }
 
-export type ViewKey = "offers" | "favorites" | "stats" | "cvs" | "settings";
+export type ViewKey =
+  | "offers"
+  | "favorites"
+  | "spontaneous"
+  | "stats"
+  | "cvs"
+  | "settings";
 
 export const SOURCES: { key: Source; label: string }[] = [
   { key: "la_bonne_alternance", label: "La Bonne Alternance" },
@@ -240,8 +247,16 @@ export const SOURCES: { key: Source; label: string }[] = [
   { key: "linkedin", label: "LinkedIn" },
   { key: "linkedin_manual", label: "LinkedIn (manuel)" },
   { key: "manual", label: "Collée" },
+  { key: "spontaneous", label: "Spontanée" },
 ];
 
 export const SOURCE_LABEL: Record<Source, string> = Object.fromEntries(
   SOURCES.map((s) => [s.key, s.label])
 ) as Record<Source, string>;
+
+/** Sources réellement scrapées — les seules qu'on active/désactive dans les
+ *  réglages. « Collée » et « Spontanée » viennent de toi, pas d'un scraper :
+ *  leur mettre un interrupteur n'aurait aucun effet. */
+export const SCRAPER_SOURCES = SOURCES.filter(
+  (s) => s.key !== "manual" && s.key !== "spontaneous"
+);

@@ -8,6 +8,7 @@ import {
   Moon,
   Sun,
   BarChart3,
+  Sparkles,
 } from "lucide-react";
 import type { Profile, Source, ViewKey } from "../types";
 import { SOURCES } from "../types";
@@ -28,6 +29,7 @@ interface Props {
 const NAV: { key: ViewKey; label: string; icon: typeof Briefcase }[] = [
   { key: "offers", label: "Offres", icon: Briefcase },
   { key: "favorites", label: "Favoris", icon: Star },
+  { key: "spontaneous", label: "Spontanée", icon: Sparkles },
   { key: "stats", label: "Stats", icon: BarChart3 },
   { key: "cvs", label: "CVs", icon: FileText },
   { key: "settings", label: "Paramètres", icon: Settings },
