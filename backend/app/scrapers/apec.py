@@ -126,7 +126,11 @@ def _row_to_offer(r: dict[str, Any]) -> OfferRaw | None:
             title=title,
             company=company,
             location=location,
-            contract="Alternance",
+            # PAS de contrat en dur : l'API APEC renvoie typeContrat=101888
+            # ("Apprentissage") même pour des postes seniors/CDI — son filtre
+            # typesContrat n'est pas fiable. On laisse None : le filtre alternance
+            # central tranche à partir du texte réel de l'offre.
+            contract=None,
             salary=salary,
             description=text,
         )

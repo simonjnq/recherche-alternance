@@ -143,6 +143,16 @@ async def _run_search_inner() -> None:
         await emit_state("Démarrage du scraping en parallèle")
 
         async def scrape_one(scraper: Scraper) -> list[OfferRaw]:
+            # Source non configurée (ex. clé d'API absente) → on l'affiche comme ignorée
+            # plutôt que de la lancer pour rien et de renvoyer 0 sans explication.
+            reason = scraper.unavailable()
+            if reason:
+                p = per_source[scraper.source]
+                p.state = "skipped"
+                p.error = reason
+                logger.warning("Source %s ignorée : %s", scraper.source, reason)
+                await emit_state()
+                return []
             start_times[scraper.source] = _time.monotonic()
             per_source[scraper.source].state = "running"
             await emit_state()

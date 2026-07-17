@@ -82,6 +82,12 @@ class Scraper(ABC):
     # on coupe et on garde ce qui a été yield. La pipeline le surcharge.
     budget_s: float = 90.0
 
+    def unavailable(self) -> Optional[str]:
+        """Raison pour laquelle la source est inutilisable (ex. clé d'API manquante),
+        ou None si elle est prête. Permet à la pipeline de l'afficher comme « ignorée »
+        au lieu de la lancer pour rien et de renvoyer 0 sans explication."""
+        return None
+
     @abstractmethod
     async def search(self, keywords: list[str], location: str, max_per_source: int) -> AsyncIterator[OfferRaw]:
         """Yield des OfferRaw. Doit gérer ses erreurs en interne (log + skip)."""

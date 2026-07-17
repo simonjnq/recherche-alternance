@@ -49,6 +49,14 @@ PARIS_LATLON = (48.8566, 2.3522)
 class LaBonneAlternanceScraper(Scraper):
     source = "la_bonne_alternance"
 
+    def unavailable(self) -> str | None:
+        if not os.getenv("LBA_API_KEY", "").strip():
+            return (
+                "clé LBA_API_KEY manquante — clé gratuite sur "
+                "api.apprentissage.beta.gouv.fr, puis LBA_API_KEY=... dans .env"
+            )
+        return None
+
     async def search(
         self, keywords: list[str], location: str, max_per_source: int
     ) -> AsyncIterator[OfferRaw]:

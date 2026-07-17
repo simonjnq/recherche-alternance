@@ -28,9 +28,13 @@ def mk(title="", description="", contract=None, source="indeed", company=None):
     (mk("Développeur Python (CDI)", "Poste en CDI, équipe data."), False),
     (mk("Stage marketing", "Stage de 6 mois"), False),
     (mk("Consultant", "Mission freelance"), False),
-    # source alternance-only sans signal explicite → on fait confiance
-    (mk("Chargé de projet", "desc neutre", source="apec"), True),
+    # source alternance-only (filtre fiable côté requête) sans signal → on fait confiance
     (mk("Chargé de projet", "desc neutre", source="wttj"), True),
+    (mk("Chargé de projet", "desc neutre", source="hellowork"), True),
+    # APEC n'est PAS fiable : son API renvoie typeContrat "Apprentissage" même pour
+    # des postes seniors/CDI → sans signal explicite dans le texte, on écarte.
+    (mk("Chargé de projet", "desc neutre", source="apec"), False),
+    (mk("Alternance Data Analyst", "desc neutre", source="apec"), True),
     # source non-fiable sans signal → écartée
     (mk("Chargé de projet", "desc neutre", source="indeed"), False),
 ])

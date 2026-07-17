@@ -20,7 +20,10 @@ from .models import OfferRaw
 
 # Sources dont l'endpoint est filtré "alternance" côté requête : l'absence de
 # signal explicite dans le texte ne suffit pas à rejeter (descriptions parfois muettes).
-ALTERNANCE_ONLY_SOURCES = {"la_bonne_alternance", "apec", "wttj", "hellowork"}
+# NB : "apec" en est volontairement ABSENTE — son API ignore le filtre typesContrat
+# et renvoie typeContrat=101888 ("Apprentissage") même pour des postes seniors/CDI.
+# On ne lui fait donc pas confiance : ses offres passent par l'analyse du texte.
+ALTERNANCE_ONLY_SOURCES = {"la_bonne_alternance", "wttj", "hellowork"}
 
 _POS = re.compile(
     r"alternan|apprenti|apprentissage|professionnalisation|contrat\s+pro\b|en\s+alternance|rythme\s+altern",
