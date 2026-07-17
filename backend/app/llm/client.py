@@ -21,7 +21,14 @@ def client() -> AsyncAnthropic:
     if _client is None:
         if not ANTHROPIC_API_KEY:
             raise RuntimeError("ANTHROPIC_API_KEY non défini. Ajoute-le dans .env")
-        _client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        # Timeout explicite : le défaut du SDK est de 10 MINUTES — une requête qui
+        # traîne bloquait un slot du scoring pendant tout ce temps (scoring qui rampe).
+        # 90 s suffisent largement (le plus gros appel = génération CV ~8k tokens).
+        _client = AsyncAnthropic(
+            api_key=ANTHROPIC_API_KEY,
+            timeout=90.0,
+            max_retries=2,
+        )
     return _client
 
 
