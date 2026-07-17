@@ -325,6 +325,9 @@ async def _run_search_inner() -> None:
                     )
                     cv_path = folder / "cv.html"
                     cv_path.write_text(cv_html)
+                    # Sans ça, un cache éditable d'une génération précédente survit et
+                    # l'éditeur re-rend le CV périmé PAR-DESSUS celui qu'on vient de générer.
+                    (folder / "cv.structured.json").unlink(missing_ok=True)
                     letter_path = folder / "letter.md"
                     letter_path.write_text(letter_md)
                     # Connexion dédiée (workers concurrents) — voir score_one.
@@ -417,6 +420,8 @@ async def regenerate_for_offer(
             json.dumps(offer.model_dump(mode="json"), indent=2, ensure_ascii=False, default=str)
         )
         (folder / "cv.html").write_text(cv_html)
+        # cf. generate_one : le cache éditable périmé écraserait ce qu'on vient de générer.
+        (folder / "cv.structured.json").unlink(missing_ok=True)
         (folder / "letter.md").write_text(letter_md)
         await dbm.add_generated(db, GeneratedDocs(
             offer_id=offer.id or 0, cv_id=style_cv_id or 0,

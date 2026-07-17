@@ -22,7 +22,7 @@ SYSTEM = """On te donne un CV HTML déjà adapté à une offre d'alternance. Ext
   "name": "string",
   "role": "string|null",                        // titre adapté sous le nom (ex: "Alternance Growth & Automatisation")
   "contact": {"email": "string|null", "phone": "string|null", "linkedin": "string|null", "location": "string|null"},
-  "intro": "string|null",                       // phrase d'intro adaptée à l'offre
+  "intro": "string|null",                       // phrase d'accroche adaptée à l'offre : 35 MOTS MAXIMUM, et elle doit dire ce que le candidat recherche (développer ses compétences dans un nouvel environnement stimulant), pas seulement ce qu'il a fait. Si le CV source dépasse 35 mots ou omet cette recherche, RÉÉCRIS-LA pour respecter la règle.
   "hard_skills": ["string", ...],
   "soft_skills": ["string", ...],
   "tools": ["string", ...],                     // section Stack & Outils
