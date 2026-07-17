@@ -34,24 +34,36 @@ MOSAIC_RE = re.compile(
 
 
 class IndeedScraper(Scraper):
+    """Indeed applique un rate-limit (403 + page CAPTCHA Cloudflare) quand on tape
+    trop vite. La parade n'est PAS de le contourner : on reste sous son seuil de
+    tolérance (peu de parallélisme, délais francs) et on se retire dès qu'il nous
+    signale un 403, au lieu d'insister et d'aggraver le blocage."""
+
     source = "indeed"
-    budget_s = 60.0
+    budget_s = 90.0
     max_per_keyword = 30
-    parallel_keywords = 3
-    pages = 2  # nb de pages (10 offres/page) parcourues par mot-clé
+    parallel_keywords = 1   # séquentiel : la rafale déclenchait le rate-limit
+    pages = 1               # 1 page par mot-clé suffit (les requêtes se recoupent)
+    max_keywords = 6        # peu de requêtes bien choisies plutôt qu'un matraquage
 
     async def search(
         self, keywords: list[str], location: str, max_per_source: int
     ) -> AsyncIterator[OfferRaw]:
         seen_keys: set[str] = set()
         yielded = 0
+        self._rate_limited = False
+        # Indeed tolère un petit volume : on ne lui envoie que les premiers mots-clés
+        # (sa recherche est large, 21 requêtes étroites sont redondantes ET le bloquent).
+        keywords = keywords[: self.max_keywords]
         async with httpx.AsyncClient(timeout=15.0) as client:
             sem = asyncio.Semaphore(self.parallel_keywords)
 
             async def fetch_one(kw: str) -> list[OfferRaw]:
                 async with sem:
+                    if self._rate_limited:
+                        return []  # Indeed nous a dit stop : on n'insiste pas
                     res = await self._scrape_keyword(client, kw, location)
-                    await polite_delay(0.3, 0.9)
+                    await polite_delay(2.0, 4.0)
                     return res
 
             tasks = [asyncio.create_task(fetch_one(kw)) for kw in keywords]
@@ -84,6 +96,15 @@ class IndeedScraper(Scraper):
                 kw=quote_plus(keyword), loc=quote_plus(location), start=page * 10
             )
             status, body = await fetch_text(client, url, referer=BASE_URL)
+            if status in (403, 429) or (body and "captcha" in body[:5000].lower()):
+                # Indeed nous signale qu'on va trop vite : on arrête TOUTE la source
+                # pour ce run (insister ne ferait qu'aggraver et prolonger le blocage).
+                self._rate_limited = True
+                logger.warning(
+                    "Indeed: rate-limit (HTTP %s) — on arrête la source pour ce run. "
+                    "Réessaie plus tard ou réduis le nombre de mots-clés.", status
+                )
+                break
             if status != 200 or not body:
                 logger.info("Indeed kw=%r p=%d → HTTP %s", keyword, page, status)
                 break  # page suivante inutile si celle-ci échoue
@@ -106,7 +127,7 @@ class IndeedScraper(Scraper):
             if len(out) >= self.max_per_keyword:
                 break
             if page + 1 < self.pages:
-                await polite_delay(0.3, 0.9)
+                await polite_delay(0.8, 1.8)
         logger.info("Indeed kw=%r → %d offres (filtrées alternance, %d pages)",
                     keyword, len(out), self.pages)
         return out[: self.max_per_keyword]
